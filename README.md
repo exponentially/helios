@@ -17,7 +17,7 @@ end
 
 ## Get Started
 
-* [Your First Aggregate Behaviour](guides/Your First Aggregate.md)
+* [Your First Aggregate Behaviour](guides/Your%20First%20Aggregate.md)
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
