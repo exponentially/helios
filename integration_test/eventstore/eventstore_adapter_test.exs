@@ -11,8 +11,8 @@ defmodule Helios.Integration.EventstoreAdapterTest do
 
     event =
       Messages.EventData.new(Extreme.Tools.gen_uuid(), UserCreated, %{
-        name: "Test 1",
-        last_name: "Lastname 2"
+        first_name: "firstname 1",
+        last_name: "lastname 2"
       })
 
     assert {:ok, 0} == Journal.append_to_stream(stream, [event], -1)
@@ -31,7 +31,7 @@ defmodule Helios.Integration.EventstoreAdapterTest do
         &Messages.EventData.new(
           Extreme.Tools.gen_uuid(),
           UserCreated,
-          %UserCreated{name: "Test #{&1}", last_name: "Lastname #{&1}"},
+          %UserCreated{first_name: "Test #{&1}", last_name: "Lastname #{&1}"},
           %{emitted_at: DateTime.utc_now()}
         )
       )
@@ -60,7 +60,7 @@ defmodule Helios.Integration.EventstoreAdapterTest do
       Enum.map(
         0..number_of_events,
         &Messages.EventData.new(Extreme.Tools.gen_uuid(), UserCreated, %UserCreated{
-          name: "Test #{&1}",
+          first_name: "Test #{&1}",
           last_name: "Lastname #{&1}"
         })
       )
@@ -89,7 +89,7 @@ defmodule Helios.Integration.EventstoreAdapterTest do
       Enum.map(
         0..number_of_events,
         &Messages.EventData.new(Extreme.Tools.gen_uuid(), UserCreated, %UserCreated{
-          name: "Test #{&1}",
+          first_name: "Test #{&1}",
           last_name: "Lastname #{&1}"
         })
       )
@@ -134,7 +134,7 @@ defmodule Helios.Integration.EventstoreAdapterTest do
       Enum.map(
         0..number_of_events,
         &Messages.EventData.new(Extreme.Tools.gen_uuid(), UserCreated, %UserCreated{
-          name: "Test #{&1}",
+          first_name: "Test #{&1}",
           last_name: "Lastname #{&1}"
         })
       )
@@ -152,7 +152,7 @@ defmodule Helios.Integration.EventstoreAdapterTest do
       Enum.map(
         0..number_of_events,
         &Messages.EventData.new(Extreme.Tools.gen_uuid(), UserCreated, %UserCreated{
-          name: "Test #{&1}",
+          first_name: "Test #{&1}",
           last_name: "Lastname #{&1}"
         })
       )
@@ -173,7 +173,7 @@ defmodule Helios.Integration.EventstoreAdapterTest do
       Enum.map(
         0..number_of_events,
         &Messages.EventData.new(Extreme.Tools.gen_uuid(), UserCreated, %UserCreated{
-          name: "Test #{&1}",
+          first_name: "Test #{&1}",
           last_name: "Lastname #{&1}"
         })
       )
@@ -191,7 +191,7 @@ defmodule Helios.Integration.EventstoreAdapterTest do
       Enum.map(
         0..number_of_events,
         &Messages.EventData.new(Extreme.Tools.gen_uuid(), UserCreated, %UserCreated{
-          name: "Test #{&1}",
+          first_name: "Test #{&1}",
           last_name: "Lastname #{&1}"
         })
       )
@@ -217,7 +217,7 @@ defmodule Helios.Integration.EventstoreAdapterTest do
       Enum.map(
         0..number_of_events,
         &Messages.EventData.new(Extreme.Tools.gen_uuid(), UserCreated, %UserCreated{
-          name: "Test #{&1}",
+          first_name: "Test #{&1}",
           last_name: "Lastname #{&1}"
         })
       )
