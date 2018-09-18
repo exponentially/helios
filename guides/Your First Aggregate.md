@@ -31,14 +31,13 @@ end
 ## Customer Aggregate Example
 
 ```elixir
-
-defmodule Customer do
+defmodule CustomerAggregate do
   use Helios.Aggregate
 
   # Aggregate state
   defstruct [:id, :first_name, :last_name, :email]
 
-  def create(ctx, %{id: id, first_name: fname, last_name: lname, email: email}) do
+  def create_customer(ctx, %{id: id, first_name: fname, last_name: lname, email: email}) do
     if id == ctx.aggregate.id do
       raise RuntimeError, "Already created"
     end
@@ -67,22 +66,27 @@ defmodule Customer do
   def apply_event(%CustomerContactCreated{email: email}, customer) do
     %{customer| email: email}
   end
+
+  # sometimes we generate event but it is not needed in recovery and it is safe to
+  # skip it
+  def apply_event(_, agg), do: agg
 end
 ```
 
 ## Message Handler Sample Code
 
 ```elixir
+  
   ctx = %Helios.Aggregate.Pipeline.Context{
-    aggregate: %Helix.Aggregate{state: },
+    aggregate: %CustomerAggregate{},
     aggregate_module: CustomerAggregate,
     correlation_id: "1234567890",
-    command: :create_user,
+    command: :create_customer,
     peer: self(),
     params: %{first_name: "Jhon", last_name: "Doe", email: "jhon.doe@gmail.com"}
   }
 
-  Cusomer.call(ctx, :create)
+  Cusomer.call(ctx, :create_customer)
     
 ```
 
