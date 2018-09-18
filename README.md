@@ -15,7 +15,7 @@ def deps do
 end
 ```
 
-## Get Started
+## Guides
 
 * [Your First Aggregate Behaviour](guides/Your%20First%20Aggregate.md)
 
