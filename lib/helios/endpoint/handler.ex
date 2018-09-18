@@ -2,8 +2,7 @@ defmodule Helios.Endpoint.Handler do
   @doc """
   Provides a server child specification to be started under the endpoint.
   """
-  @callback child_spec(endpoint :: module, config :: Keyword.t()) ::
-              Supervisor.child_spec()
+  @callback child_spec(endpoint :: module, config :: keyword()) :: Supervisor.child_spec()
 
   use Supervisor
   require Logger

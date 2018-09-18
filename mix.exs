@@ -13,6 +13,10 @@ defmodule Helios.MixProject do
       test_paths: test_paths(Mix.env()),
       build_per_environment: false,
       deps: deps(),
+
+      aliases: ["test.all": ["test", "test.adapters"],
+               "test.adapters": &test_adapters/1],
+
       # Hex
       description: "A building blocks for CQRS segregated applications",
       package: package(),
@@ -32,8 +36,8 @@ defmodule Helios.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:helios_aggregate, path: "../helios_aggregate"},
-      {:extreme, github: "exponentially/extreme", branch: "master", optinal: true}
+      {:extreme, github: "exponentially/extreme", branch: "master", optinal: true},
+      {:dialyxir, "~> 1.0.0-rc.3", only: [:dev, :test], runtime: false, optinal: true}
     ]
   end
 
@@ -41,6 +45,23 @@ defmodule Helios.MixProject do
     do: ["integration_test/#{journal_adapter}"]
 
   defp test_paths(_), do: ["test/helios"]
+
+  defp test_adapters(args) do
+    for env <- @journal_adapters, do: env_run(env, args)
+  end
+
+  defp env_run(env, args) do
+    args = if IO.ANSI.enabled?, do: ["--color"|args], else: ["--no-color"|args]
+
+    IO.puts "==> Running tests for MIX_ENV=#{env} mix test"
+    {_, res} = System.cmd "mix", ["test"|args],
+                          into: IO.binstream(:stdio, :line),
+                          env: [{"MIX_ENV", to_string(env)}]
+
+    if res > 0 do
+      System.at_exit(fn _ -> exit({:shutdown, 1}) end)
+    end
+  end
 
   defp package() do
     [
@@ -55,11 +76,11 @@ defmodule Helios.MixProject do
 
   defp docs() do
     [
-      main: "Ecto",
+      main: "Helios",
       source_ref: "v#{@version}",
-      canonical: "http://hexdocs.pm/ecto",
-      logo: "guides/images/e.png",
-      source_url: "https://github.com/elixir-ecto/ecto",
+      canonical: "http://hexdocs.pm/helios",
+      # logo: "guides/images/e.png",
+      source_url: "https://github.com/exponentially/helios",
       extras: [
         "guides/Getting Started.md",
         "guides/Associations.md",

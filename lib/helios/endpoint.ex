@@ -115,7 +115,7 @@ defmodule Helios.Endpoint do
 
   defp plug() do
     quote location: :keep do
-      use Helios.Aggregate.Pipeline.Builder
+      use Helios.Pipeline.Builder
       import Helios.Endpoint
 
       # Compile after the debugger so we properly wrap it.

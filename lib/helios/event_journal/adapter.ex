@@ -13,7 +13,7 @@ defmodule Helios.EventJournal.Adapter do
   @callback append_to_stream(
               server :: module,
               stream :: stream_name(),
-              events :: list(Extreme.System.Journal.Messages.EventData.t()),
+              events :: list(Messages.EventData.t()),
               expexted_version :: event_number()
             ) ::
               {:ok, event_number}

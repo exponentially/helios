@@ -1,5 +1,5 @@
 defmodule Helios.Integration.Events.UserCreated do
-  defstruct [:user_id, :name, :last_name]
+  defstruct [:user_id, :first_name, :last_name]
 end
 
 defmodule Helios.Integration.Events.UserEmailChanged do

@@ -78,17 +78,17 @@ defmodule Helios.EventJournal do
         Supervisor.stop(__MODULE__, :normal, timeout)
       end
 
-      @Impl
+      @impl true
       def append_to_stream(stream, events, expexted_version \\ -1) do
         __adapter__().append_to_stream(__MODULE__, stream, events, expexted_version)
       end
 
-      @Impl
+      @impl true
       def read_event(stream, event_number, resolve_links \\ false) do
         __adapter__().read_event(__MODULE__, stream, event_number, resolve_links)
       end
 
-      @Impl
+      @impl true
       def read_stream_events_forward(stream, event_number, max_events, resolve_links \\ false) do
         __adapter__().read_stream_events_forward(
           __MODULE__,
@@ -99,7 +99,7 @@ defmodule Helios.EventJournal do
         )
       end
 
-      @Impl
+      @impl true
       def read_stream_events_backward(stream, event_number, max_events, resolve_links \\ false) do
         __adapter__().read_stream_events_backward(
           __MODULE__,
@@ -110,7 +110,7 @@ defmodule Helios.EventJournal do
         )
       end
 
-      @Impl
+      @impl true
       def read_all_events_forward(position, max_events, resolve_links \\ false) do
         __adapter__().read_all_events_forward(
           __MODULE__,
@@ -120,7 +120,7 @@ defmodule Helios.EventJournal do
         )
       end
 
-      @Impl
+      @impl true
       def read_all_events_backward(position, max_events, resolve_links \\ false) do
         __adapter__().read_all_events_backward(
           __MODULE__,
@@ -130,15 +130,17 @@ defmodule Helios.EventJournal do
         )
       end
 
-      @Impl
+      @impl true
       def delete_stream(stream, expected_version, hard_delete? \\ false) do
         __adapter__().delete_stream(__MODULE__, stream, expected_version, hard_delete?)
       end
 
+      @impl true
       def get_stream_metadata(stream) do
         __adapter__().get_stream_metadata(__MODULE__, stream)
       end
 
+      @impl true
       def set_stream_metadata(stream, expected_version, metadata) do
         __adapter__().set_stream_metadata(__MODULE__, stream, expected_version, metadata)
       end
