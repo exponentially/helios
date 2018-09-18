@@ -1,6 +1,6 @@
 # Helios
 
-**TODO: Add description**
+A building blocks for elixir CQRS segregated applications.
 
 ## Installation
 
@@ -10,10 +10,14 @@ by adding `helios` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:helios, "~> 0.1.0"}
+    {:helios, "~> 0.1"}
   ]
 end
 ```
+
+## Get Started
+
+* [Your First Aggregate Behaviour](guides/Your First Aggregate.md)
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can

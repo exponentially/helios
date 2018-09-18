@@ -82,9 +82,7 @@ defmodule Helios.MixProject do
       # logo: "guides/images/e.png",
       source_url: "https://github.com/exponentially/helios",
       extras: [
-        "guides/Getting Started.md",
-        "guides/Associations.md",
-        "guides/Testing with Ecto.md"
+        "guides/Your First Aggregate.md"
       ],
       groups_for_modules: []
     ]
