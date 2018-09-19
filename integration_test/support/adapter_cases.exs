@@ -1,5 +1,5 @@
 defmodule Helios.Integration.AdapterCasesTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   alias Helios.EventJournal.Messages
   alias Helios.Integration.TestJournal, as: Journal
   alias Helios.Integration.Events.UserCreated

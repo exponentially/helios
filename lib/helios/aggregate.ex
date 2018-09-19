@@ -10,6 +10,11 @@ defmodule Helios.Aggregate do
   @type t :: struct()
 
   @doc """
+  Returns unique identifier for stream to which events will be persisted.
+  """
+  @callback persistance_id(id :: term) :: String.t()
+
+  @doc """
   Handles execution of the command.
   """
   @callback handle(ctx :: Context.t(), params :: Context.params()) :: Context.t()

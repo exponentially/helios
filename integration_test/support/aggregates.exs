@@ -10,6 +10,10 @@ defmodule Helios.Integration.UserAggregate do
   # Plugs for command context pipeline
   plug(Helios.Plugs.Logger, log_level: :debug)
 
+  def persistance_id(id) do
+    "users-#{id}"
+  end
+
   def create_user(ctx, %{id: id, first_name: first_name, last_name: last_name, email: email}) do
     if ctx.aggregate.id == id do
       raise RuntimeError, "Already Created"

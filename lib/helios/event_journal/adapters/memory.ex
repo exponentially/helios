@@ -77,6 +77,7 @@ defmodule Helios.EventJournal.Adapter.Memory do
     #                  when stream_id == stream and sequence_number >= event_number and sequence_number <= max_events ->
     #     {idx, stream_id, sequence_number, event_id, event_type, data, metadata, created}
     #   end)
+    event_number = if event_number < 0, do: 0, else: event_number
     last_event_number = event_number + max_events
 
     fun = [
@@ -102,7 +103,7 @@ defmodule Helios.EventJournal.Adapter.Memory do
            events: persisted_events,
            next_event_number: -1,
            last_event_number: last_event_number,
-           is_end_of_stream: TRUE,
+           is_end_of_stream: true,
            last_commit_position: last_commit_position
          }}
 

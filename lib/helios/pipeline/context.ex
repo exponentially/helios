@@ -12,6 +12,8 @@ defmodule Helios.Pipeline.Context do
   @type aggregate_module :: module
   # user shared assigns
   @type assigns :: %{atom => any}
+  # id that uniquely identifies request from which context originates
+  @type request_id :: String.t()
   # id with which command correlates
   @type correlation_id :: String.t() | nil
   # command name, could be struct name or atom
@@ -39,7 +41,7 @@ defmodule Helios.Pipeline.Context do
           aggregate: struct,
           aggregate_module: aggregate_module,
           assigns: assigns,
-          causation_id: term,
+          request_id: request_id,
           correlation_id: correlation_id,
           command: command,
           events: events,
@@ -56,7 +58,7 @@ defmodule Helios.Pipeline.Context do
   defstruct aggregate: nil,
             aggregate_module: nil,
             assigns: %{},
-            causation_id: nil,
+            request_id: nil,
             correlation_id: nil,
             command: nil,
             events: nil,
@@ -171,7 +173,7 @@ defmodule Helios.Pipeline.Context do
           [
             # todo: Metadata builder as plug??!?!
             correlation_id: ctx.correlation_id,
-            causation_id: ctx.causation_id,
+            causation_id: ctx.request_id,
             emitted_at: DateTime.utc_now()
           ]
           |> Enum.filter(fn {_, v} -> v != nil end)
