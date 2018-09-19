@@ -22,7 +22,7 @@ defmodule Helios.Pipeline.Context do
   @type events :: nil | event | [event]
   # indicates that processing pipeline halted and none of other plugs that waiths for execution will be excuted
   @type halted :: boolean
-  # pit to which reposponse should be reply-ed
+  # pid to which reposponse should be reply-ed
   @type owner :: pid
   # command parameters
   @type params :: map | struct
@@ -33,7 +33,7 @@ defmodule Helios.Pipeline.Context do
   # plugin private assigns
   @type private :: map
   # status of current context
-  @type status :: :init | :executing | :success | :commiting | :commited | :failed
+  @type status :: :init | :executing | :executed | :commiting | :success | :failed
 
   @type t :: %Context{
           aggregate: struct,

@@ -86,7 +86,7 @@ end
     params: %{first_name: "Jhon", last_name: "Doe", email: "jhon.doe@gmail.com"}
   }
 
-  Cusomer.call(ctx, :create_customer)
+  ctx = Cusomer.call(ctx, :create_customer)
     
 ```
 

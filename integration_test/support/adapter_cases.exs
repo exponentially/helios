@@ -1,4 +1,4 @@
-defmodule Helios.Integration.EventstoreAdapterTest do
+defmodule Helios.Integration.AdapterCasesTest do
   use ExUnit.Case, async: true
   alias Helios.EventJournal.Messages
   alias Helios.Integration.TestJournal, as: Journal
@@ -21,7 +21,7 @@ defmodule Helios.Integration.EventstoreAdapterTest do
   end
 
   @tag :event_journal
-  @tag :event_journal_read
+  @tag :event_journal_read_single
   test "should read single event at given position" do
     stream = "extreme_test-#{UUID.uuid4()}"
 
@@ -111,6 +111,20 @@ defmodule Helios.Integration.EventstoreAdapterTest do
   @tag :event_journal
   @tag :event_journal_read_all
   test "should read all events from event store forward" do
+    stream = "extreme_test-#{UUID.uuid4()}"
+    number_of_events = 500
+
+    events =
+      Enum.map(
+        0..number_of_events,
+        &Messages.EventData.new(Extreme.Tools.gen_uuid(), UserCreated, %UserCreated{
+          first_name: "Test #{&1}",
+          last_name: "Lastname #{&1}"
+        })
+      )
+
+    assert {:ok, ^number_of_events} = Journal.append_to_stream(stream, events, -1)
+
     {:ok, resp} = Journal.read_all_events_forward({0, 0}, 50, true)
     assert length(resp.events) == 50
 
@@ -227,12 +241,12 @@ defmodule Helios.Integration.EventstoreAdapterTest do
     Process.sleep(3000)
 
     assert 0 ==
-      Journal.read_stream_events_forward(stream, 0, 50)
-      |> elem(1)
-      |> Map.get(:events)
-      |> length()
+             Journal.read_stream_events_forward(stream, 0, 50)
+             |> elem(1)
+             |> Map.get(:events)
+             |> length()
 
-    assert {:ok, %{metadata: metadata, meta_version: 0}} = Journal.get_stream_metadata(stream)
+    assert {:ok, %{metadata: _metadata, meta_version: 0}} = Journal.get_stream_metadata(stream)
 
     # assert {:ok, 1} == Journal.set_stream_metadata(stream, %{}, 0) # this need scavage to be run in eventstore before executing below lines
 

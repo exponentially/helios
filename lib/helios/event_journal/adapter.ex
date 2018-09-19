@@ -9,6 +9,9 @@ defmodule Helios.EventJournal.Adapter do
           | :stream_deleted
           | :access_denied
 
+  @callback start_link(module :: module(), config :: keyword(), opts :: keyword()) ::
+              :ignore | {:error, any()} | {:ok, pid()}
+
   @doc "Append events to stream if given expected version matches to last written event in journals database"
   @callback append_to_stream(
               server :: module,
@@ -75,7 +78,7 @@ defmodule Helios.EventJournal.Adapter do
               expected_version :: integer,
               hard_delete :: boolean
             ) ::
-              {:ok, list(Messages.ReadAllEventsResponse.t())}
+              {:ok, list(Messages.Position.t())}
               | {:error, Messages.ReadAllEventsResponse.read_error()}
 
   @callback set_stream_metadata(

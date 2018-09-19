@@ -29,6 +29,9 @@ defmodule Helios.Pipeline do
               |> Map.put(:helios_aggregate_command_handler, handler)
             end
           )
+          |> Map.put(:status, :executing)
+          |> Map.put(:halted, :false)
+          |> Map.put(:response, nil)
 
         helios_aggregate_pipeline(ctx, handler)
       end
