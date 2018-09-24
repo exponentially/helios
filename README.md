@@ -59,6 +59,7 @@ your project `{:extreme, "~> 0.13"}`
 
 ## Guides
 
+* [Helios Configuration](guides/Configuration.md)
 * [Your First Aggregate Behaviour](guides/Your%20First%20Aggregate.md)
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
