@@ -30,17 +30,18 @@ defmodule Helios.Pipeline.Context do
   @type params :: map | struct
   # server that executes command in given context
   @type peer :: pid
-  # plug that can be registered into command pipeline
-  @type plug :: module | atom
   # plugin private assigns
   @type private :: map
   # status of current context
   @type status :: :init | :executing | :executed | :commiting | :success | :failed
 
+  @type response :: any
+
   @type t :: %Context{
           aggregate: struct,
           aggregate_module: aggregate_module,
           assigns: assigns,
+          path_info: [binary],
           request_id: request_id,
           correlation_id: correlation_id,
           command: command,
@@ -51,13 +52,15 @@ defmodule Helios.Pipeline.Context do
           peer: peer,
           private: private,
           retry: integer,
+          state: :unset | :set | :sent,
           status: status,
-          response: any
+          response: response
         }
 
   defstruct aggregate: nil,
             aggregate_module: nil,
             assigns: %{},
+            path_info: [],
             request_id: nil,
             correlation_id: nil,
             command: nil,
@@ -69,6 +72,7 @@ defmodule Helios.Pipeline.Context do
             peer: nil,
             private: %{},
             retry: 0,
+            state: :unset,
             status: :init,
             response: nil
 
@@ -195,12 +199,12 @@ defmodule Helios.Pipeline.Context do
       raise RuntimeError, "Response already set!"
     end
 
-    %{ctx | response: message, status: :success}
+    %{ctx | response: message, state: :set}
   end
 
   @spec error(Context.t(), any()) :: Context.t()
   def error(%Context{} = ctx, reason) do
-    %{ctx | halted: true, response: reason, status: :failed}
+    %{ctx | halted: true, response: reason, state: :set, status: :failed}
   end
 end
 

@@ -63,7 +63,7 @@ defmodule Helios.Plugs.Logger do
   defp keep_values(_other, _params), do: "[FILTERED]"
 
   defp params(params) do
-    filter_parameters = Application.get_env(:helios_aggregate, :filter_parameters)
+    filter_parameters = Application.get_env(:helios, :filter_parameters)
 
     params
     |> filter_values(filter_parameters)

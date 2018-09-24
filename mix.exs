@@ -28,7 +28,7 @@ defmodule Helios.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger],
+      extra_applications: [:logger, :crypto],
       mod: {Helios, []}
     ]
   end
@@ -36,8 +36,11 @@ defmodule Helios.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:libring, "~> 1.0"},
+      {:gen_state_machine, "~> 2.0"},
       {:extreme, github: "exponentially/extreme", branch: "master", optinal: true},
-      {:dialyxir, "~> 1.0.0-rc.3", only: [:dev, :test], runtime: false, optinal: true}
+      {:dialyxir, "~> 1.0.0-rc.3", only: [:dev, :test], runtime: false, optinal: true},
+      {:poolboy, "~> 1.5"}
     ]
   end
 

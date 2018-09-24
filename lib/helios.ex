@@ -11,9 +11,16 @@ defmodule Helios do
 
   @doc false
   def start(_type, _args) do
+
+    # Configure proper system flags from Helios only
+    if stacktrace_depth = Application.get_env(:helios, :stacktrace_depth) do
+      :erlang.system_flag(:backtrace_depth, stacktrace_depth)
+    end
+
+
     children = [
       # todo: implement code reloader
-      # {Helios.CodeReloader.Server, []}
+      {Helios.CodeReloader.Server, []}
     ]
 
     opts = [strategy: :one_for_one, name: Helios.Supervisor]

@@ -18,57 +18,57 @@ defmodule Helios.Endpoint do
   """
   @callback init(:supervisor, config :: Keyword.t()) :: {:ok, Keyword.t()}
 
-  @doc """
-  Subscribes the caller to the given topic.
-  """
-  @callback subscribe(topic :: __MODULE__.topic(), opts :: Keyword.t()) :: :ok | {:error, term}
+  # @doc """
+  # Subscribes the caller to the given topic.
+  # """
+  # @callback subscribe(topic :: __MODULE__.topic(), opts :: Keyword.t()) :: :ok | {:error, term}
 
-  @doc """
-  Unsubscribes the caller from the given topic.
-  """
-  @callback unsubscribe(topic :: __MODULE__.topic()) :: :ok | {:error, term}
+  # @doc """
+  # Unsubscribes the caller from the given topic.
+  # """
+  # @callback unsubscribe(topic :: __MODULE__.topic()) :: :ok | {:error, term}
 
-  @doc """
-  Broadcasts a `msg` as `event` in the given `topic`.
-  """
-  @callback broadcast(
-              topic :: __MODULE__.topic(),
-              event :: __MODULE__.event(),
-              msg :: __MODULE__.msg()
-            ) :: :ok | {:error, term}
+  # @doc """
+  # Broadcasts a `msg` as `event` in the given `topic`.
+  # """
+  # @callback broadcast(
+  #            topic :: __MODULE__.topic(),
+  #            event :: __MODULE__.event(),
+  #            msg :: __MODULE__.msg()
+  #          ) :: :ok | {:error, term}
 
-  @doc """
-  Broadcasts a `msg` as `event` in the given `topic`.
+  # @doc """
+  # Broadcasts a `msg` as `event` in the given `topic`.
 
-  Raises in case of failures.
-  """
-  @callback broadcast!(
-              topic :: __MODULE__.topic(),
-              event :: __MODULE__.event(),
-              msg :: __MODULE__.msg()
-            ) :: :ok | no_return
+  # Raises in case of failures.
+  # """
+  # @callback broadcast!(
+  #             topic :: __MODULE__.topic(),
+  #             event :: __MODULE__.event(),
+  #             msg :: __MODULE__.msg()
+  #           ) :: :ok | no_return
 
-  @doc """
-  Broadcasts a `msg` from the given `from` as `event` in the given `topic`.
-  """
-  @callback broadcast_from(
-              from :: pid,
-              topic :: __MODULE__.topic(),
-              event :: __MODULE__.event(),
-              msg :: __MODULE__.msg()
-            ) :: :ok | {:error, term}
+  # @doc """
+  # Broadcasts a `msg` from the given `from` as `event` in the given `topic`.
+  # """
+  # @callback broadcast_from(
+  #             from :: pid,
+  #             topic :: __MODULE__.topic(),
+  #             event :: __MODULE__.event(),
+  #             msg :: __MODULE__.msg()
+  #           ) :: :ok | {:error, term}
 
-  @doc """
-  Broadcasts a `msg` from the given `from` as `event` in the given `topic`.
+  # @doc """
+  # Broadcasts a `msg` from the given `from` as `event` in the given `topic`.
 
-  Raises in case of failures.
-  """
-  @callback broadcast_from!(
-              from :: pid,
-              topic :: __MODULE__.topic(),
-              event :: __MODULE__.event(),
-              msg :: __MODULE__.msg()
-            ) :: :ok | no_return
+  # Raises in case of failures.
+  # """
+  # @callback broadcast_from!(
+  #             from :: pid,
+  #             topic :: __MODULE__.topic(),
+  #             event :: __MODULE__.event(),
+  #             msg :: __MODULE__.msg()
+  #           ) :: :ok | no_return
 
   # Instrumentation
 
@@ -102,9 +102,12 @@ defmodule Helios.Endpoint do
       @otp_app unquote(opts)[:otp_app] || raise("endpoint expects :otp_app to be given")
       var!(config) = Helios.Endpoint.Supervisor.config(@otp_app, __MODULE__)
 
+      def __app__, do: @otp_app
+
       @doc """
       Callback invoked on endpoint initialization.
       """
+      @impl Helios.Endpoint
       def init(_key, config) do
         {:ok, config}
       end
@@ -118,8 +121,11 @@ defmodule Helios.Endpoint do
       use Helios.Pipeline.Builder
       import Helios.Endpoint
 
+      Module.register_attribute(__MODULE__, :helios_aggregates, accumulate: true)
+
       # Compile after the debugger so we properly wrap it.
       @before_compile Helios.Endpoint
+      @helios_render_errors var!(config)[:render_errors]
     end
   end
 
@@ -139,6 +145,7 @@ defmodule Helios.Endpoint do
       @doc """
       Starts the endpoint supervision tree.
       """
+      @impl Helios.Endpoint
       def start_link(_opts \\ []) do
         Helios.Endpoint.Supervisor.start_link(@otp_app, __MODULE__)
       end
@@ -148,6 +155,7 @@ defmodule Helios.Endpoint do
 
       Returns `default` if the key does not exist.
       """
+      @impl Helios.Endpoint
       def config(key, default \\ nil) do
         case :ets.lookup(__MODULE__, key) do
           [{^key, val}] -> val
@@ -161,6 +169,44 @@ defmodule Helios.Endpoint do
       def config_change(changed, removed) do
         Helios.Endpoint.Supervisor.config_change(__MODULE__, changed, removed)
       end
+
+      def path(path) when is_nil(path) or path == "", do: "/"
+      def path(path), do: path
+    end
+  end
+
+  defmacro __before_compile__(%{module: module}) do
+    otp_app = Module.get_attribute(module, :otp_app)
+    instrumentation = Helios.Endpoint.Instrument.definstrument(otp_app, module)
+
+    quote do
+      defoverridable call: 2
+
+      # Inline render errors so we set the endpoint before calling it.
+      def call(ctx, opts) do
+        ctx = Helios.Pipeline.Context.put_private(ctx, :helios_endpoint, __MODULE__)
+
+        try do
+          # TODO: send_resp to adapter
+          super(ctx, opts)
+        rescue
+          e in Helios.Pipeline.WrapperError ->
+            %{context: ctx, kind: kind, reason: reason, stack: stack} = e
+            reraise e, System.stacktrace()
+        catch
+          kind, reason ->
+            _stack = System.stacktrace()
+            {kind, reason}
+            #Helios.Endpoint.RespondError.__catch__(ctx, kind, reason, stack, @helios_render_errors)
+        end
+      end
+
+      @doc false
+      def __dispatch__(path, opts)
+      # unquote(dispatches)
+      def __dispatch__(_, opts), do: {:plug, __MODULE__, opts}
+
+      unquote(instrumentation)
     end
   end
 end

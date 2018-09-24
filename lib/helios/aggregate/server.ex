@@ -41,19 +41,19 @@ defmodule Helios.Aggregate.Server do
           opts :: GenServer.options()
         ) :: GenServer.on_start()
   def start_link(otp_app, {module, id}, opts \\ []) do
-    GenServer.start_link(__MODULE__, [otp_app, {module, id}], opts)
+    GenServer.start_link(__MODULE__, [otp_app, module, id], opts)
   end
 
   # SERVER
 
   @impl true
   @spec init({atom(), module(), term()}) :: {:ok, __MODULE__.server_state()}
-  def init([otp_app, {module, id}]) do
+  def init([otp_app, module, id]) do
     default_journal = Application.get_env(:helios, :default_journal)
 
-    opts =
+    journal =
       Application.get_env(otp_app, module, [])
-      |> Keyword.put_new(:journal, default_journal)
+      |> Keyword.get(:journal, default_journal)
 
     state =
       struct(
@@ -61,7 +61,7 @@ defmodule Helios.Aggregate.Server do
         id: id,
         aggregate_module: module,
         aggregate: struct(module),
-        journal: Keyword.get(opts, :journal)
+        journal: journal
       )
 
     :ok = GenServer.cast(self(), :recover)
@@ -77,6 +77,18 @@ defmodule Helios.Aggregate.Server do
     new_ctx = %{ctx | owner: from}
     buffer = :queue.in({:execute, new_ctx}, buffer)
     {:noreply, %{state | buffer: buffer}}
+  end
+
+  # called when a handoff has been initiated due to changes
+  # in cluster topology, valid response values are:
+  #
+  #   - `:restart`, to simply restart the process on the new node
+  #   - `{:resume, state}`, to hand off some state to the new process
+  #   - `:ignore`, to leave the process running on its current node
+  #
+  def handle_call({:helios, :begin_handoff}, _from, s) do
+    Logger.debug("Handing off state")
+    {:stop, :shutdown, {:resume, s}, s}
   end
 
   @impl true
@@ -109,6 +121,67 @@ defmodule Helios.Aggregate.Server do
 
     {:noreply, state}
   end
+
+  # called after the process has been restarted on its new node,
+  # and the old process' state is being handed off. This is only
+  # sent if the return to `begin_handoff` was `{:resume, state}`.
+  # **NOTE**: This is called *after* the process is successfully started,
+  # so make sure to design your processes around this caveat if you
+  # wish to hand off state like this.
+  def handle_cast({:helios, :end_handoff, state}, s) do
+    s =
+      s
+      |> Map.put(:buffer, :queue.join(state.buffer, s.buffer))
+      |> maybe_dequeue()
+      |> schedule_shutdown()
+
+    {:noreply, s}
+  end
+
+  # called when a network split is healed and the local process
+  # should continue running, but a duplicate process on the other
+  # side of the split is handing off its state to us. You can choose
+  # to ignore the handoff state, or apply your own conflict resolution
+  # strategy
+  def handle_cast({:helios, :resolve_conflict, remote}, local) do
+    Logger.debug("Resolving conflict with remote #{inspect remote.peer}.")
+    Logger.debug("Remote buffer of #{:queue.len(remote.buffer)} pending commands is merget into local process buffer.")
+    state =
+      local
+      |> Map.put(:buffer, :queue.join(remote.buffer, local.buffer))
+      |> maybe_dequeue()
+      |> schedule_shutdown()
+
+    {:noreply, state}
+  end
+
+  @impl GenServer
+  def handle_info(:shutdown_if_idle, %{buffer: buffer} = state) do
+    with {:buffer, 0} <- {:buffer, :queue.len(buffer)},
+         {:message_queue_len, 0} <- Process.info(self(), :message_queue_len) do
+      {:stop, :normal, state}
+    else
+      {:buffer, _} ->
+        s =
+          state
+          |> maybe_dequeue()
+          |> schedule_shutdown()
+
+        {:noreply, s}
+
+      {:message_queue_len, _} ->
+        {:noreply, schedule_shutdown(state)}
+    end
+  end
+
+  # this message is sent when this process should die
+  # because it is being moved, use this as an opportunity
+  # to clean up
+  def handle_info({:helios, :die}, state) do
+    {:stop, :shutdown, state}
+  end
+
+  def handle_info(msg, state), do: super(msg, state)
 
   # SERVER PRIVATE
   defp handle_execute(ctx, from, s) when is_map(ctx) do
@@ -164,9 +237,12 @@ defmodule Helios.Aggregate.Server do
     case apply(journal, :append_to_stream, [stream, events, expected_version]) do
       {:ok, event_number} ->
         new_ctx = %{ctx | status: :success}
-        aggregate = Enum.reduce(events, s.aggregate, fn event, agg ->
-          apply(s.aggregate_module, :apply_event, [event.data, agg])
-        end)
+
+        aggregate =
+          Enum.reduce(events, s.aggregate, fn event, agg ->
+            apply(s.aggregate_module, :apply_event, [event.data, agg])
+          end)
+
         %{s | status: {:executing, new_ctx}, last_sequence_no: event_number, aggregate: aggregate}
 
       {:error, reason} ->
@@ -184,10 +260,14 @@ defmodule Helios.Aggregate.Server do
   defp maybe_reply(%{status: {:executing, %{status: :failed, response: response} = ctx}} = s) do
     case ctx.owner do
       nil ->
-        Logger.warn("Failed to execute command #{ctx.command} with reson #{response} but no owner found in context to report to!!!")
+        Logger.warn(
+          "Failed to execute command #{ctx.command} with reson #{response} but no owner found in context to report to!!!"
+        )
+
       pid when is_pid(pid) ->
         send(pid, {:error, response})
-      {pid, _tag}=dest when is_pid(pid) ->
+
+      {pid, _tag} = dest when is_pid(pid) ->
         :ok = GenServer.reply(dest, {:error, response})
     end
 
@@ -197,12 +277,17 @@ defmodule Helios.Aggregate.Server do
   defp maybe_reply(%{status: {:executing, %{status: :success, response: response} = ctx}} = s) do
     case ctx.owner do
       nil ->
-        Logger.warn("Failed to execute command #{ctx.command} with reson #{response} but no owner found in context to report to!!!")
+        Logger.warn(
+          "Failed to execute command #{ctx.command} with reson #{response} but no owner found in context to report to!!!"
+        )
+
       pid when is_pid(pid) ->
         send(pid, {:ok, response})
-      {pid, _tag}=dest when is_pid(pid) ->
+
+      {pid, _tag} = dest when is_pid(pid) ->
         :ok = GenServer.reply(dest, {:ok, response})
     end
+
     %{s | status: :ready}
   end
 
@@ -211,6 +296,8 @@ defmodule Helios.Aggregate.Server do
   defp maybe_dequeue(%{status: :ready, buffer: buffer} = s) do
     do_dequeue(:queue.out(buffer), s)
   end
+
+  defp maybe_dequeue(s), do: s
 
   defp do_dequeue({:empty, {[], []} = buffer}, s), do: %{s | buffer: buffer}
 
@@ -264,7 +351,7 @@ defmodule Helios.Aggregate.Server do
   end
 
   defp schedule_shutdown(state) do
-    # TODO: schedule shutdown
+    Process.send_after(self(), :shutdown_if_idle, 10_000)
     state
   end
 

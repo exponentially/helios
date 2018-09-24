@@ -5,15 +5,22 @@ defmodule Helios.Endpoint.Supervisor do
 
   @doc false
   def start_link(otp_app, module) do
-    Supervisor.start_link(__MODULE__, {otp_app, module}, name: module)
+    case Supervisor.start_link(__MODULE__, {otp_app, module}, name: module) do
+      {:ok, _} = ok ->
+        warmup(module)
+        ok
+
+      {:error, _} = error ->
+        error
+    end
   end
 
   @doc false
-  def init({otp_app, mod}) do
+  def init({otp_app, endpoint}) do
     id = :crypto.strong_rand_bytes(16) |> Base.encode64()
 
     conf =
-      case mod.init(:supervisor, [endpoint_id: id] ++ config(otp_app, mod)) do
+      case endpoint.init(:supervisor, [endpoint_id: id] ++ config(otp_app, endpoint)) do
         {:ok, conf} ->
           conf
 
@@ -24,55 +31,17 @@ defmodule Helios.Endpoint.Supervisor do
 
     server? = server?(conf)
 
-    # if server? and conf[:code_reloader] do
-    #   Helios.CodeReloader.Server.check_symlinks()
-    # end
+    if server? and conf[:code_reloader] do
+      Helios.CodeReloader.Server.check_symlinks()
+    end
 
     children =
       []
-      |> Kernel.++(config_children(mod, conf, otp_app))
-      |> Kernel.++(server_children(mod, conf, server?))
+      |> Kernel.++(config_children(endpoint, conf, otp_app))
+      |> Kernel.++(server_children(endpoint, conf, server?))
 
-    # |> Kernel.++(watcher_children(mod, conf, server?))
-
-    supervise(children, strategy: :one_for_one)
+    Supervisor.init(children, strategy: :one_for_one)
   end
-
-  defp config_children(mod, conf, otp_app) do
-    args = [mod, conf, defaults(otp_app, mod), [name: Module.concat(mod, "Config")]]
-    [worker(Helios.Config, args)]
-  end
-
-  defp server_children(mod, conf, server?) do
-    if server? do
-      server = Module.concat(mod, "Server")
-      otp_app = conf[:otp_app]
-
-      [supervisor(Helios.Endpoint.Handler, [otp_app, mod, [name: server]])]
-    else
-      []
-    end
-  end
-
-  # defp watcher_children(_mod, conf, server?) do
-  #   if server? do
-  #     Enum.map(conf[:watchers], fn {cmd, args} ->
-  #       worker(
-  #         Helios.Endpoint.Watcher,
-  #         watcher_args(cmd, args),
-  #         id: {cmd, args},
-  #         restart: :transient
-  #       )
-  #     end)
-  #   else
-  #     []
-  #   end
-  # end
-
-  # defp watcher_args(cmd, cmd_args) do
-  #   {args, opts} = Enum.split_while(cmd_args, &is_binary(&1))
-  #   [cmd, args, opts]
-  # end
 
   @doc """
   The endpoint configuration used at compile time.
@@ -81,11 +50,45 @@ defmodule Helios.Endpoint.Supervisor do
     Helios.Config.from_env(otp_app, endpoint, defaults(otp_app, endpoint))
   end
 
+  @doc """
+  Callback that changes the configuration from the app callback.
+  """
+  def config_change(endpoint, changed, removed) do
+    res = Helios.Config.config_change(endpoint, changed, removed)
+    warmup(endpoint)
+    res
+  end
+
+  defp config_children(endpoint, conf, otp_app) do
+    args = [
+      endpoint,
+      conf,
+      defaults(otp_app, endpoint),
+      [name: Module.concat(endpoint, "Config")]
+    ]
+
+    [worker(Helios.Config, args)]
+  end
+
+  defp server_children(endpoint, conf, server?) do
+    if server? do
+      otp_app = conf[:otp_app]
+
+      [
+        Helios.Endpoint.Handler.child_spec(otp_app, endpoint),
+        Helios.Aggregate.Supervisor.child_spec(otp_app, endpoint),
+        Helios.Registry.child_spec(otp_app, endpoint),
+        Helios.Registry.Tracker.child_spec(otp_app, endpoint)
+      ]
+    else
+      []
+    end
+  end
+
   defp defaults(otp_app, _module) do
     [
       otp_app: otp_app,
-      handler: Helios.Endpoint.DefaultHandler,
-      endpoint_name: :facade,
+      adapter: Helios.Endpoint.RpcAdapter,
 
       # Compile-time config
       code_reloader: false,
@@ -107,5 +110,10 @@ defmodule Helios.Endpoint.Supervisor do
 
   def server?(conf) when is_list(conf) do
     Keyword.get(conf, :server, Application.get_env(:helios, :serve_endpoints, false))
+  end
+
+  defp warmup(endpoint) do
+    endpoint.path("/")
+    :ok
   end
 end

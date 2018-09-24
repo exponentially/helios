@@ -53,6 +53,6 @@ defmodule Helios.Aggregate do
 
   @doc false
   def plug_init_mode() do
-    Application.get_env(:helios_aggregate, :plug_init_mode, :compile)
+    Application.get_env(:helios, :plug_init_mode, :compile)
   end
 end

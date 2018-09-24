@@ -1,4 +1,4 @@
-defmodule Helios.Aggregate.CommandHandlerClauseError do
+defmodule Helios.Pipeline.CommandHandlerClauseError do
   @moduledoc """
   Indicates that command handler is not implemented.
 
@@ -24,7 +24,7 @@ defmodule Helios.Aggregate.CommandHandlerClauseError do
   end
 end
 
-defmodule Helios.Aggregate.WrapperError do
+defmodule Helios.Pipeline.WrapperError do
   @moduledoc """
   Wraps catched excpetions in aggregate pipeline and rearises it so path of execution
   can easily be spotted in error log.

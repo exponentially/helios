@@ -98,11 +98,11 @@ defmodule Helios.Pipeline do
         [{aggregate, handler, [%Context{} = ctx | _], _loc} | _] = stack
       ) do
     args = [aggregate: aggregate, handler: handler, params: ctx.params]
-    reraise Helios.Aggregate.CommandHandlerClauseError, args, stack
+    reraise Helios.Pipeline.CommandHandlerClauseError, args, stack
   end
 
   def __catch__(%Context{} = ctx, reason, _aggregate, _handler, stack) do
-    Helios.Aggregate.WrapperError.reraise(ctx, :error, reason, stack)
+    Helios.Pipeline.WrapperError.reraise(ctx, :error, reason, stack)
   end
 
   @doc """
