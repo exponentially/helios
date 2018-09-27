@@ -15,6 +15,8 @@ def deps do
 end
 ```
 
+Example application can be seen [here](https://github.com/exponentially/helios_example)
+
 ## Configuration
 
 It is important to knwo that there is minimum configuration that has to be explicitly 
@@ -61,6 +63,7 @@ your project `{:extreme, "~> 0.13"}`
 
 * [Helios Configuration](guides/Configuration.md)
 * [Your First Aggregate Behaviour](guides/Your%20First%20Aggregate.md)
+* [Routing](guides/Routing.md)
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
