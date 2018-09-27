@@ -365,8 +365,7 @@ if Code.ensure_compiled?(Extreme) do
     defp append_to_stream_request(stream, events, expected_version) do
       proto_events =
         Enum.map(events, fn event_data ->
-          metadata = if event_data.metadata != nil, do: Poison.encode!(event_data.metadata)
-
+          metadata = if event_data.metadata != nil, do: Poison.encode!(event_data.metadata), else: "{}"
           ExMsg.NewEvent.new(
             event_id: event_data.id,
             event_type: event_data.type,
@@ -487,7 +486,7 @@ if Code.ensure_compiled?(Extreme) do
       response = %Messages.PersistedEvent{
         stream_id: event.event_stream_id,
         event_number: event.event_number,
-        event_id: event.event_id,
+        event_id: UUID.binary_to_string!(event.event_id),
         event_type: event.event_type,
         data: data,
         metadata: metadata,
@@ -533,7 +532,7 @@ if Code.ensure_compiled?(Extreme) do
       response = %Messages.PersistedEvent{
         stream_id: event.event_stream_id,
         event_number: event.event_number,
-        event_id: event.event_id,
+        event_id: UUID.binary_to_string!(event.event_id),
         event_type: event.event_type,
         data: data,
         metadata: metadata,

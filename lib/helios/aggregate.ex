@@ -3,7 +3,7 @@ defmodule Helios.Aggregate do
   Aggregate behaviour.
   """
 
-  alias Helios.Pipeline.Context
+  alias Helios.Context
 
   @type aggregate_id :: String.t()
 
@@ -32,7 +32,7 @@ defmodule Helios.Aggregate do
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts], location: :keep do
       import Helios.Aggregate
-      import Helios.Pipeline.Context
+      import Helios.Context
 
       use Helios.Pipeline, opts
 
@@ -51,8 +51,7 @@ defmodule Helios.Aggregate do
     end
   end
 
-  @doc false
-  def plug_init_mode() do
-    Application.get_env(:helios, :plug_init_mode, :compile)
-  end
+  def state(%Context{private: %{helios_plug_state: state}} = _), do: state
+
+  def state(_ctx), do: nil
 end

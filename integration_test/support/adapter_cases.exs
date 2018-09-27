@@ -70,6 +70,7 @@ defmodule Helios.Integration.AdapterCasesTest do
     {event_5, _} = List.pop_at(events, 5)
     {event_14, _} = List.pop_at(events, 14)
 
+    {:ok, persisted} = Journal.read_stream_events_forward(stream, 0, 10, true)
     {:ok, persisted} = Journal.read_stream_events_forward(stream, 5, 10, true)
 
     assert length(persisted.events) == 10

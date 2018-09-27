@@ -1,30 +1,41 @@
 defmodule Helios.AggregateServerTest do
   use ExUnit.Case, async: true
   alias Helios.Aggregate.Server
-  alias Helios.Pipeline.Context
+  alias Helios.Context
   alias Helios.Integration.UserAggregate
   alias Helios.Integration.Events.UserCreated
   alias Helios.Integration.Events.UserEmailChanged
   alias Helios.Integration.TestJournal
 
-  @tag :aggregate_server
-  test "should persist UserCreated in event journal" do
-    module = UserAggregate
+  use Helios.Pipeline.Test
+
+  setup do
     id = UUID.uuid4()
-    {:ok, pid} = Server.start_link(:helios, {module, id})
+    {:ok, pid} = Server.start_link(:helios, {UserAggregate, id})
+    stream_name = UserAggregate.persistance_id(id)
 
-    stream_name = module.persistance_id(id)
-    assert "users-" <> _ = stream_name
+    [
+      id: id,
+      pid: pid,
+      stream_name: stream_name
+    ]
+  end
 
-    ctx = %Context{
-      request_id: UUID.uuid4(),
-      aggregate_module: UserAggregate,
-      command: :create_user,
-      params: %{id: id, first_name: "Jhon", last_name: "Doe", email: "jhon.doe@gmail.com"},
-      owner: self()
-    }
+  @tag :aggregate_server
+  test "should persist UserCreated in event journal", args do
+    # Task.start(fn -> :sys.trace(pid, true) end)
 
-    assert {:ok, :created} = Server.call(pid, ctx)
+    params = %{id: args.id, first_name: "Jhon", last_name: "Doe", email: "jhon.doe@gmail.com"}
+    path = "/users/#{args.id}/create_user"
+
+    ctx =
+      ctx(:execute, path, params)
+      |> Context.put_private(:helios_plug, UserAggregate)
+      |> Context.put_private(:helios_plug_handler, :create_user)
+
+    assert %Context{} = Server.call(args.pid, ctx)
+
+    assert_receive {:ok, :created}
 
     assert {:ok,
             %{
@@ -32,7 +43,8 @@ defmodule Helios.AggregateServerTest do
                 %{data: %{__struct__: UserCreated}},
                 %{data: %{__struct__: UserEmailChanged}}
               ]
-            }} = TestJournal.read_stream_events_forward(stream_name, -1, 2)
+            }} = TestJournal.read_stream_events_forward(args.stream_name, -1, 2)
 
+    GenServer.stop(args.pid)
   end
 end

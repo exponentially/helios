@@ -1,4 +1,4 @@
-defmodule Helios.Pipeline.CommandHandlerClauseError do
+defmodule Helios.Pipeline.MessageHandlerClauseError do
   @moduledoc """
   Indicates that command handler is not implemented.
 
@@ -7,12 +7,12 @@ defmodule Helios.Pipeline.CommandHandlerClauseError do
   defexception message: nil, plug_status: :missing_command_hendler
 
   def exception(opts) do
-    aggregate = Keyword.fetch!(opts, :aggregate)
+    plug = Keyword.fetch!(opts, :plug)
     handler = Keyword.fetch!(opts, :handler)
     params = Keyword.fetch!(opts, :params)
 
     msg = """
-    could not find a matching #{inspect(aggregate)}.#{handler} clause
+    could not find a matching #{inspect(plug)}.#{handler} clause
     to execute command. This typically happens when there is a
     parameter mismatch but may also happen when any of the other
     handler arguments do not match. The command parameters are:

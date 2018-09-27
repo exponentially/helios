@@ -15,13 +15,14 @@ defmodule Helios.Integration.UserAggregate do
   end
 
   def create_user(ctx, %{id: id, first_name: first_name, last_name: last_name, email: email}) do
-    if ctx.aggregate.id == id do
+    aggregate = state(ctx)
+    if aggregate.id == id do
       raise RuntimeError, "Already Created"
     end
 
     ctx
     |> emit(%UserCreated{user_id: id, first_name: first_name, last_name: last_name})
-    |> emit(%UserEmailChanged{user_id: id, old_email: ctx.aggregate.email, new_email: email})
+    |> emit(%UserEmailChanged{user_id: id, old_email: aggregate.email, new_email: email})
     |> ok(:created)
   end
 

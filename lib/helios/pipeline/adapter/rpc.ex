@@ -1,4 +1,4 @@
-defmodule Helios.Pipeline.Adapters.Rpc do
+defmodule Helios.Pipeline.Adapter.Rpc do
   use GenServer
 
   def start_link(client, plug, config) do

@@ -20,11 +20,7 @@ defmodule Helios.Endpoint.Instrument do
       metadata to be associated with the event at runtime (e.g., the query being
       issued if the event to instrument is a DB query).
 
-      ## Examples
 
-          instrument :render_view, %{view: "index.html"}, fn ->
-            render(conn, "index.html")
-          end
 
       """
       @impl Helios.Endpoint
@@ -117,11 +113,11 @@ defmodule Helios.Endpoint.Instrument do
 
   # called by Helios.Endpoint.instrument/4, see docs there
   @doc false
-  @spec extract_endpoint(Helios.Pipeline.Context.t | module) :: module | nil
+  @spec extract_endpoint(Helios.Context.t | module) :: module | nil
   def extract_endpoint(endpoint_or_ctx) do
     case endpoint_or_ctx do
-      %Helios.Pipeline.Context{private: %{helios_endpoint: endpoint}} -> endpoint
-      %{__struct__: struct} when struct in [Helios.Pipeline.Context] -> nil
+      %Helios.Context{private: %{helios_endpoint: endpoint}} -> endpoint
+      %{__struct__: struct} when struct in [Helios.Context] -> nil
       endpoint -> endpoint
     end
   end

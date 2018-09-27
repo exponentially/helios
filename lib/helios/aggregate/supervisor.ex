@@ -28,10 +28,10 @@ defmodule Helios.Aggregate.Supervisor do
   end
 
   @doc """
-  Starts new pipeline server
+  Starts new plug server
   """
-  def register(endpoint, pipeline, id) do
+  def register(endpoint, plug, id) do
     server = supervisor_name(endpoint)
-    {:ok, _pid} = Supervisor.start_child(server, [pipeline, id])
+    {:ok, pid} = Supervisor.start_child(server, [endpoint.__app__(), {plug, id}])
   end
 end

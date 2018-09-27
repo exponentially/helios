@@ -1,8 +1,9 @@
 defmodule Helios.Aggregate.Server do
   use GenServer
   require Logger
-  alias Helios.Pipeline.Context
-  alias Helios.Aggregate.CommandHandlerClauseError
+  alias Helios.Context
+  alias Helios.Pipeline.MessageHandlerClauseError
+  import Helios.Registry, only: [whereis_or_register: 5]
   # alias Helios.Aggregate.WrapperError
 
   @type status :: :recovering | {:executing, Context.t()} | :ready
@@ -27,12 +28,15 @@ defmodule Helios.Aggregate.Server do
 
   # CLIENT
 
-  def call(server, ctx, timeout \\ 5000) do
-    GenServer.call(server, {:execute, ctx}, timeout)
-  end
+  def call(%{private: private} = ctx, _) do
+    %{helios_plug_key: key, helios_plug: plug, helios_endpoint: endpoint} = private
+    id = Map.get(ctx.params, key)
+    args = [endpoint.__app__(), {plug, id}]
+    name = plug.persistance_id(id)
 
-  def cast(server, ctx) do
-    GenServer.cast(server, {:execute, ctx})
+    {:ok, pid} = whereis_or_register(endpoint, name, __MODULE__, :start_link, args)
+
+    GenServer.call(pid, {:execute, ctx}, 5000)
   end
 
   @spec start_link(
@@ -61,7 +65,8 @@ defmodule Helios.Aggregate.Server do
         id: id,
         aggregate_module: module,
         aggregate: struct(module),
-        journal: journal
+        journal: journal,
+        status: :recovering
       )
 
     :ok = GenServer.cast(self(), :recover)
@@ -70,10 +75,11 @@ defmodule Helios.Aggregate.Server do
 
   @impl true
   def handle_call({:execute, ctx}, from, %{status: :ready} = state) do
-    handle_execute(ctx, from, state)
+    new_ctx = %{ctx | owner: from}
+    handle_execute(new_ctx, state)
   end
 
-  def handle_call({:execute, ctx}, from, %{status: {:executing, _}, buffer: buffer} = state) do
+  def handle_call({:execute, ctx}, from, %{buffer: buffer} = state) do
     new_ctx = %{ctx | owner: from}
     buffer = :queue.in({:execute, new_ctx}, buffer)
     {:noreply, %{state | buffer: buffer}}
@@ -93,10 +99,10 @@ defmodule Helios.Aggregate.Server do
 
   @impl true
   def handle_cast({:execute, ctx}, %{status: :ready} = state) do
-    handle_execute(ctx, ctx.owner, state)
+    handle_execute(ctx, state)
   end
 
-  def handle_cast({:execute, ctx}, %{status: {:executing, _}, buffer: buffer} = state) do
+  def handle_cast({:execute, ctx}, %{buffer: buffer} = state) do
     buffer = :queue.in({:execute, ctx}, buffer)
     {:noreply, %{state | buffer: buffer}}
   end
@@ -144,8 +150,12 @@ defmodule Helios.Aggregate.Server do
   # to ignore the handoff state, or apply your own conflict resolution
   # strategy
   def handle_cast({:helios, :resolve_conflict, remote}, local) do
-    Logger.debug("Resolving conflict with remote #{inspect remote.peer}.")
-    Logger.debug("Remote buffer of #{:queue.len(remote.buffer)} pending commands is merget into local process buffer.")
+    Logger.debug("Resolving conflict with remote #{inspect(remote.peer)}.")
+
+    Logger.debug(
+      "Remote buffer of #{:queue.len(remote.buffer)} pending commands is merget into local process buffer."
+    )
+
     state =
       local
       |> Map.put(:buffer, :queue.join(remote.buffer, local.buffer))
@@ -184,13 +194,10 @@ defmodule Helios.Aggregate.Server do
   def handle_info(msg, state), do: super(msg, state)
 
   # SERVER PRIVATE
-  defp handle_execute(ctx, from, s) when is_map(ctx) do
+  defp handle_execute(ctx, %{aggregate: aggregate} = s) do
     ctx =
       ctx
-      |> Map.put(:aggregate, s.aggregate)
-      |> Map.put(:aggregate_module, s.aggregate_module)
-      |> Map.put(:owner, from)
-      |> Map.put(:peer, self())
+      |> Context.put_private(:helios_plug_state, aggregate)
       |> try_execute()
 
     new_state =
@@ -203,22 +210,18 @@ defmodule Helios.Aggregate.Server do
     {:noreply, new_state}
   end
 
-  defp try_execute(%{status: :init, aggregate_module: module} = ctx) do
+  defp try_execute(%Context{status: :init, state: state, private: %{helios_plug: plug}} = ctx)
+       when not (state in [:set, :send]) do
     ctx = %{ctx | status: :executing}
 
-    ctx =
-      try do
-        ctx
-        |> module.call(ctx.command)
-        |> Map.put(:status, :executed)
-      rescue
-        error in CommandHandlerClauseError ->
-          %{ctx | status: :failed, halted: true, response: error}
-      catch
-        error -> %{ctx | status: :failed, halted: true, response: error}
-      end
-
     ctx
+    |> plug.call(ctx.private.helios_plug_handler)
+    |> Map.put(:status, :executed)
+  rescue
+    error in MessageHandlerClauseError ->
+      %{ctx | status: :failed, halted: true, response: error}
+  catch
+    error -> %{ctx | status: :failed, halted: true, response: error}
   end
 
   defp maybe_commit(%{status: {:executing, %{status: :executed, events: e} = ctx}} = s)
@@ -230,20 +233,28 @@ defmodule Helios.Aggregate.Server do
 
   defp maybe_commit(%{status: {:executing, %{status: :executed, events: events} = ctx}} = s)
        when length(events) > 0 do
-    %{journal: journal, aggregate_module: module, id: id, last_sequence_no: expected_version} = s
-    stream = module.persistance_id(id)
+    stream = s.aggregate_module.persistance_id(s.id)
 
     # todo: async commiting
-    case apply(journal, :append_to_stream, [stream, events, expected_version]) do
+    case apply(s.journal, :append_to_stream, [stream, events, s.last_sequence_no]) do
       {:ok, event_number} ->
-        new_ctx = %{ctx | status: :success}
-
         aggregate =
           Enum.reduce(events, s.aggregate, fn event, agg ->
             apply(s.aggregate_module, :apply_event, [event.data, agg])
           end)
 
-        %{s | status: {:executing, new_ctx}, last_sequence_no: event_number, aggregate: aggregate}
+        new_ctx = %{
+          ctx
+          | status: :success,
+            private: %{ctx.private | helios_plug_state: aggregate}
+        }
+
+        %{
+          s
+          | status: {:executing, new_ctx},
+            last_sequence_no: event_number,
+            aggregate: aggregate
+        }
 
       {:error, reason} ->
         raise RuntimeError, reason
@@ -261,14 +272,14 @@ defmodule Helios.Aggregate.Server do
     case ctx.owner do
       nil ->
         Logger.warn(
-          "Failed to execute command #{ctx.command} with reson #{response} but no owner found in context to report to!!!"
+          "Failed to execute command #{ctx.private.helios_plug_handler} with reson #{response} but no owner found in context to report to!!!"
         )
 
       pid when is_pid(pid) ->
-        send(pid, {:error, response})
+        send(pid, ctx)
 
       {pid, _tag} = dest when is_pid(pid) ->
-        :ok = GenServer.reply(dest, {:error, response})
+        :ok = GenServer.reply(dest, ctx)
     end
 
     %{s | status: :ready}
@@ -278,14 +289,14 @@ defmodule Helios.Aggregate.Server do
     case ctx.owner do
       nil ->
         Logger.warn(
-          "Failed to execute command #{ctx.command} with reson #{response} but no owner found in context to report to!!!"
+          "Failed to execute command #{ctx.private.helios_plug_handler} with reson #{response} but no owner found in context to report to!!!"
         )
 
       pid when is_pid(pid) ->
-        send(pid, {:ok, response})
+        send(pid, ctx)
 
       {pid, _tag} = dest when is_pid(pid) ->
-        :ok = GenServer.reply(dest, {:ok, response})
+        :ok = GenServer.reply(dest, ctx)
     end
 
     %{s | status: :ready}
@@ -322,19 +333,24 @@ defmodule Helios.Aggregate.Server do
     stream = module.persistance_id(id)
 
     take = 100
+    start_from = if last_sequence_no < 0, do: 0, else: last_sequence_no
+    journal_fn = :read_stream_events_forward
 
     event_stream =
       Stream.resource(
         fn ->
-          {journal, :read_stream_events_forward, [stream, last_sequence_no, take]}
+          [stream, start_from, take]
         end,
-        fn {m, f, [stream, pos, take]} ->
-          case apply(m, f, [stream, pos, take]) |> IO.inspect() do
-            {:ok, %{is_end_of_stream: true} = result} ->
-              {:halt, result.events}
+        fn args ->
+          case apply(journal, journal_fn, args) do
+            {:ok, %{events: events}} when events == [] ->
+              {:halt, args}
 
             {:ok, rse} ->
-              {rse.events, {m, f, [stream, rse.next_event_number, take]}}
+              {rse.events, [stream, rse.next_event_number, take]}
+
+            {:error, :no_stream} ->
+              {:halt, args}
 
             {:error, error} ->
               raise RuntimeError, "Failed to recover aggregate due #{inspect(error)}"
@@ -343,9 +359,8 @@ defmodule Helios.Aggregate.Server do
         fn x -> x end
       )
 
-    event_stream
-    |> Enum.reduce(state, fn persisted_event, s ->
-      aggregate = module.apply_event(persisted_event.data)
+    Enum.reduce(event_stream, state, fn persisted_event, s ->
+      aggregate = module.apply_event(persisted_event.data, s.aggregate)
       %{s | last_sequence_no: persisted_event.event_number, aggregate: aggregate}
     end)
   end

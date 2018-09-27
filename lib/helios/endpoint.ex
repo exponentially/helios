@@ -121,8 +121,6 @@ defmodule Helios.Endpoint do
       use Helios.Pipeline.Builder
       import Helios.Endpoint
 
-      Module.register_attribute(__MODULE__, :helios_aggregates, accumulate: true)
-
       # Compile after the debugger so we properly wrap it.
       @before_compile Helios.Endpoint
       @helios_render_errors var!(config)[:render_errors]
@@ -184,10 +182,9 @@ defmodule Helios.Endpoint do
 
       # Inline render errors so we set the endpoint before calling it.
       def call(ctx, opts) do
-        ctx = Helios.Pipeline.Context.put_private(ctx, :helios_endpoint, __MODULE__)
+        ctx = Helios.Context.put_private(ctx, :helios_endpoint, __MODULE__)
 
         try do
-          # TODO: send_resp to adapter
           super(ctx, opts)
         rescue
           e in Helios.Pipeline.WrapperError ->

@@ -1,5 +1,5 @@
 defmodule Helios.Pipeline.Plug do
-  alias Helios.Pipeline.Context
+  alias Helios.Context
 
   @type opts :: any
 

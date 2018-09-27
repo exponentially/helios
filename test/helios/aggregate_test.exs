@@ -5,7 +5,7 @@ defmodule Helios.AggregateTest do
   alias Helios.Integration.UserAggregate
   alias Helios.Integration.Events.UserCreated
   alias Helios.Integration.Events.UserEmailChanged
-  alias Helios.Pipeline.Context
+  alias Helios.Context
   alias Helios.EventJournal.Messages.EventData
 
   doctest Helios.Aggregate
@@ -14,23 +14,24 @@ defmodule Helios.AggregateTest do
 
   setup do
     ctx = %Context{
-      aggregate: %UserAggregate{},
-      aggregate_module: UserAggregate,
       correlation_id: @correlation_id,
-      peer: self()
+      peer: self(),
+      private: %{
+        helios_plug: UserAggregate
+      }
     }
 
     [ctx: ctx]
   end
 
   test "should execute logger in aggregate pipeline", args do
-    ctx_before = %{
+    ctx_before =
       args.ctx
-      | command: :create_user,
-        params: %{id: 1, first_name: "Jhon", last_name: "Doe", email: "jhon.doe@gmail.com"}
-    }
+      |> Map.put(:request_id, UUID.uuid4())
+      |> Map.put(:command, :create_user)
+      |> Map.put(:params, %{id: 1, first_name: "Jhon", last_name: "Doe", email: "jhon.doe@gmail.com"})
+      |> Context.put_private(:helios_plug_state, UserAggregate.new())
 
-    assert [] == UserAggregate.init([])
     metadata = %{correlation_id: @correlation_id}
 
     assert(

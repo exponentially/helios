@@ -2,7 +2,7 @@ defmodule Helios.Integration.Assertions do
   @moduledoc """
   Assertions macros that should make testing aggregates easier.
   """
-  alias Helios.Pipeline.Context
+  alias Helios.Context
 
   @doc """
   Asserts is given event/events are emmitted during pipeline execution

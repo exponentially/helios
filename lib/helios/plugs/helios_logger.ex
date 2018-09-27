@@ -11,9 +11,8 @@ defmodule Helios.Plugs.Logger do
     log_level = Keyword.get(opts, :log_level)
 
     Elixir.Logger.log(log_level, fn ->
-      "Executing command #{ctx.command} on aggregate #{ctx.aggregate_module} with params: #{
-        params(ctx.params)
-      }"
+      "Executing #{ctx.private.helios_plug_handler} at " <>
+        "#{ctx.private.helios_plug} with params: #{params(ctx.params)}"
     end)
 
     ctx

@@ -26,4 +26,9 @@ defmodule Helios do
     opts = [strategy: :one_for_one, name: Helios.Supervisor]
     Supervisor.start_link(children, opts)
   end
+
+  @doc false
+  def plug_init_mode() do
+    Application.get_env(:helios, :plug_init_mode, :compile)
+  end
 end

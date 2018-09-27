@@ -168,7 +168,7 @@ defmodule Helios.Registry.Tracker do
       |> strategy_impl.add_node(Node.self())
       |> strategy_impl.add_nodes(nodelist)
 
-    if Application.get_env(:helios, :log_level) == :debug do
+    if Application.get_env(:helios, :trace) == true do
       _ = Task.start(fn -> :sys.trace(tracker_name(endpoint), true) end)
     end
 

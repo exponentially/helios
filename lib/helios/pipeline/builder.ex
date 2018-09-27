@@ -18,7 +18,7 @@ defmodule Helios.Pipeline.Builder do
 
       defoverridable [init: 1, call: 2]
 
-      import Helios.Pipeline.Context
+      import Helios.Context
       import Helios.Pipeline.Builder, only: [plug: 1, plug: 2]
 
       Module.register_attribute(__MODULE__, :plugs, accumulate: true)
@@ -79,16 +79,16 @@ defmodule Helios.Pipeline.Builder do
     call = quote_plug_call(plug_type, plug, opts)
 
     error_message = case plug_type do
-      :module   -> "expected #{inspect plug}.call/2 to return a Helios.Pipeline.Context"
-      :function -> "expected #{plug}/2 to return a Helios.Pipeline.Context"
+      :module   -> "expected #{inspect plug}.call/2 to return a Helios.Context"
+      :function -> "expected #{plug}/2 to return a Helios.Context"
     end <> ", all plugs must receive context and return context"
 
     quote do
       case unquote(compile_guards(call, guards)) do
-        %Helios.Pipeline.Context{halted: true} = data ->
+        %Helios.Context{halted: true} = data ->
           unquote(log_halt(plug_type, plug, env, builder_opts))
           data
-        %Helios.Pipeline.Context{} = data ->
+        %Helios.Context{} = data ->
           unquote(acc)
         _ ->
           raise unquote(error_message)

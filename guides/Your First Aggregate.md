@@ -77,7 +77,7 @@ end
 
 ```elixir
   
-  ctx = %Helios.Pipeline.Context{
+  ctx = %Helios.Context{
     aggregate: %CustomerAggregate{},
     aggregate_module: CustomerAggregate,
     correlation_id: "1234567890",

@@ -1,8 +1,11 @@
 defmodule Helios.Pipeline.Adapter do
-  alias Helios.Pipeline.Context
+  alias Helios.Context
 
   @type payload :: term
+  @type status :: Context.status()
+  @type response :: Context.response()
 
-  @callback send_resp(payload :: payload, status :: Context.status(), response :: Context.resposne()) ::
-              {:ok, sent_body :: binary | nil, payload}
+  @type sent_body :: binary | nil
+
+  @callback send_resp(payload, status, response) :: {:ok, sent_body, payload}
 end

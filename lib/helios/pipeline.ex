@@ -1,7 +1,7 @@
 defmodule Helios.Pipeline do
   @moduledoc false
 
-  alias Helios.Pipeline.Context
+  alias Helios.Context
 
   @doc false
   defmacro __using__(opts) do
@@ -9,7 +9,7 @@ defmodule Helios.Pipeline do
       @behaviour Helios.Pipeline.Plug
 
       import Helios.Pipeline
-      alias Helios.Pipeline.Context
+      alias Helios.Context
 
       Module.register_attribute(__MODULE__, :plugs, accumulate: true)
       @before_compile Helios.Pipeline
@@ -25,19 +25,17 @@ defmodule Helios.Pipeline do
             ctx.private,
             fn private ->
               private
-              |> Map.put(:helios_aggregate, __MODULE__)
-              |> Map.put(:helios_aggregate_command_handler, handler)
+              |> Map.put(:helios_plug, __MODULE__)
+              |> Map.put(:helios_plug_handler, handler)
             end
           )
           |> Map.put(:status, :executing)
-          |> Map.put(:halted, :false)
-          |> Map.put(:response, nil)
 
-        helios_aggregate_pipeline(ctx, handler)
+        helios_plug_pipeline(ctx, handler)
       end
 
       @doc false
-      def handle(%Context{private: %{helios_aggregate_command_handler: handler}} = ctx, _ops) do
+      def handle(%Context{private: %{helios_plug_handler: handler}} = ctx, _ops) do
         apply(__MODULE__, handler, [ctx, ctx.params])
       end
 
@@ -55,7 +53,7 @@ defmodule Helios.Pipeline do
         env,
         plugs,
         log_on_halt: :debug,
-        init_mode: Helios.Aggregate.plug_init_mode()
+        init_mode: Helios.plug_init_mode()
       )
 
     quote do
@@ -71,17 +69,17 @@ defmodule Helios.Pipeline do
               var!(ctx_before),
               reason,
               __MODULE__,
-              var!(ctx_before).private.helios_aggregate_command_handler,
+              var!(ctx_before).private.helios_plug_handler,
               System.stacktrace()
             )
         end
       end
 
-      defp helios_aggregate_pipeline(unquote(ctx), var!(handler)) do
+      defp helios_plug_pipeline(unquote(ctx), var!(handler)) do
         var!(ctx) = unquote(ctx)
-        var!(aggregate) = __MODULE__
+        var!(plug) = __MODULE__
         _ = var!(ctx)
-        _ = var!(aggregate)
+        _ = var!(plug)
         _ = var!(handler)
 
         unquote(body)
@@ -91,14 +89,14 @@ defmodule Helios.Pipeline do
 
   @doc false
   def __catch__(
-        %Context{},
+        %Helios.Context{},
         :function_clause,
-        aggregate,
+        plug,
         handler,
-        [{aggregate, handler, [%Context{} = ctx | _], _loc} | _] = stack
+        [{plug, handler, [%Helios.Context{} = ctx | _], _loc} | _] = stack
       ) do
-    args = [aggregate: aggregate, handler: handler, params: ctx.params]
-    reraise Helios.Pipeline.CommandHandlerClauseError, args, stack
+    args = [plug: plug, handler: handler, params: ctx.params]
+    reraise Helios.Pipeline.MessageHandlerClauseError, args, stack
   end
 
   def __catch__(%Context{} = ctx, reason, _aggregate, _handler, stack) do
