@@ -38,7 +38,7 @@ defmodule Helios.MixProject do
     [
       {:libring, "~> 1.0"},
       {:gen_state_machine, "~> 2.0"},
-      {:extreme, github: "exponentially/extreme", branch: "master", optinal: true},
+      {:extreme, "~> 0.13", only: [:test], optinal: true},
       {:dialyxir, "~> 1.0.0-rc.3", only: [:dev, :test], runtime: false, optinal: true},
       {:poolboy, "~> 1.5"}
     ]

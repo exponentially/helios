@@ -32,6 +32,6 @@ defmodule Helios.Aggregate.Supervisor do
   """
   def register(endpoint, plug, id) do
     server = supervisor_name(endpoint)
-    {:ok, pid} = Supervisor.start_child(server, [endpoint.__app__(), {plug, id}])
+    {:ok, _pid} = Supervisor.start_child(server, [endpoint.__app__(), {plug, id}])
   end
 end

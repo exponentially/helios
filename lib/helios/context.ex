@@ -93,7 +93,7 @@ defmodule Helios.Context do
             response: nil
 
   @already_sent {:plug_ctx, :sent}
-  @unsent [:unset, :set, :set_chunked, :set_file]
+  # @unsent [:unset, :set, :set_chunked, :set_file]
   @doc """
   Assigns a value to a key in the context.
 
