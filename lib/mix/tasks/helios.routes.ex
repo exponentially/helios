@@ -26,7 +26,7 @@ defmodule Mix.Tasks.Helios.Routes do
   end
   defp router(router_name, _base) do
     arg_router = Module.concat("Elixir", router_name)
-    loaded(arg_router) || Mix.raise "the provided router, #{inspect arg_router}, does not exist"
+    loaded(arg_router) || Mix.raise("the provided router, #{inspect arg_router}, does not exist")
   end
 
   defp loaded(module), do: Code.ensure_loaded?(module) && module

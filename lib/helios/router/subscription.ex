@@ -9,7 +9,7 @@ defmodule Helios.Router.Subscription do
   The `Phoenix.Router.Resource` struct. It stores:
 
     * `:path` - the path as string (not normalized) and it is allways equal to `"#{@path_prefix}"`
-    * `:events` - the commands to which only this subscriber should repspond to
+    * `:events` - the commands to which only this subscriber should repspond to with attribute name that tells how to extract id from messasge
     * `:param` - the param to be used in routes (not normalized)
     * `:route` - the context for resource routes
     * `:subscriber` - the subscriber as an atom

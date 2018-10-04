@@ -208,7 +208,8 @@ defmodule Helios.Router do
 
     routes_with_exprs = Enum.map(routes, &{&1, Route.exprs(&1)})
 
-    # Helios.Router.Helpers.define(env, routes_with_exprs)
+    Helios.Endpoint.Facade.define(env, routes_with_exprs)
+
     {matches, _} = Enum.map_reduce(routes_with_exprs, %{}, &build_match/2)
 
     # @anno is used here to avoid warnings if forwarding to root path

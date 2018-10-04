@@ -6,6 +6,8 @@ defmodule Helios.Aggregate.Server do
   import Helios.Registry, only: [whereis_or_register: 5]
   # alias Helios.Aggregate.WrapperError
 
+  @idle_timeout 60_000
+
   @type status :: :recovering | {:executing, Context.t()} | :ready
   @type server_state :: %__MODULE__{
           id: term,
@@ -34,6 +36,7 @@ defmodule Helios.Aggregate.Server do
     args = [endpoint.__app__(), {plug, id}]
     name = plug.persistance_id(id)
 
+    #todo: suprvisor shoul be called
     {:ok, pid} = whereis_or_register(endpoint, name, __MODULE__, :start_link, args)
 
     GenServer.call(pid, {:execute, ctx}, 5000)
@@ -366,7 +369,7 @@ defmodule Helios.Aggregate.Server do
   end
 
   defp schedule_shutdown(state) do
-    Process.send_after(self(), :shutdown_if_idle, 10_000)
+    Process.send_after(self(), :shutdown_if_idle, @idle_timeout)
     state
   end
 
