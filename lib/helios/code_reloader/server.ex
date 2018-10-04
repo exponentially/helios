@@ -99,7 +99,7 @@ defmodule Helios.CodeReloader.Server do
 
   defp can_symlink?() do
     build_path = Mix.Project.build_path()
-    symlink = Path.join(Path.dirname(build_path), "__phoenix__")
+    symlink = Path.join(Path.dirname(build_path), "__helios__")
 
     case File.ln_s(build_path, symlink) do
       :ok ->
