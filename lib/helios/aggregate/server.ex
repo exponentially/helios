@@ -33,13 +33,17 @@ defmodule Helios.Aggregate.Server do
   def call(%{private: private} = ctx, _) do
     %{helios_plug_key: key, helios_plug: plug, helios_endpoint: endpoint} = private
     id = Map.get(ctx.params, key)
-    args = [endpoint.__app__(), {plug, id}]
-    name = plug.persistance_id(id)
 
-    #todo: suprvisor shoul be called
-    {:ok, pid} = whereis_or_register(endpoint, name, __MODULE__, :start_link, args)
+    {:ok, pid} =
+      whereis_or_register(
+        endpoint,
+        plug.persistance_id(id),
+        Helios.Aggregate.Supervisor,
+        :register,
+        [endpoint, plug, id]
+      )
 
-    GenServer.call(pid, {:execute, ctx}, 5000)
+    GenServer.call(pid, {:execute, ctx})
   end
 
   @spec start_link(

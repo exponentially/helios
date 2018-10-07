@@ -1,31 +1,69 @@
 defmodule Helios.Endpoint.Facade do
-  alias Helios.Router.Route
+  @moduledoc false
   alias Helios.Context
-
   @behaviour Helios.Pipeline.Adapter
 
-  def execute(endpoint, proxy, id, command, params \\ %{})
+  def ctx(%{path: path, params: params}) do
+    ref = make_ref()
 
-  def execute(endpoint, proxy, id, command, params) when is_atom(command) do
-    execute(endpoint, proxy, id, Atom.to_string(command), params)
-  end
-
-  def execute(endpoint, proxy, id, command, params) do
-    ctx = %Context{
-      adapter: {__MODULE__, %{owner: self(), ref: make_ref(), id: id, params: params}},
-      method: :execute,
+    req = %{
       owner: self(),
-      path_info: [proxy, "#{id}", command],
+      ref: ref,
+      path: path,
       params: params
     }
 
-    endpoint.call(ctx, [])
-    # todo: receive do ... end
+    %Context{
+      adapter: {__MODULE__, req},
+      method: :execute,
+      owner: self(),
+      path_info: split_path(path),
+      params: params
+    }
+  end
+
+  @doc "Executes command at given proxy and endpoint"
+  @spec execute(module, String.t(), term, atom | String.t(), map(), Keyword.t()) :: term
+  def execute(endpoint, proxy, id, command, params \\ %{}, opts \\ [])
+
+  def execute(endpoint, proxy, id, command, params, opts) when is_atom(command) do
+    execute(endpoint, proxy, id, Atom.to_string(command), params, opts)
+  end
+
+  def execute(endpoint, proxy, id, command, params, opts) do
+    proxy_id = to_param(id)
+    timeout = Keyword.get(opts, :timeout, 5_000)
+    timeout = if timeout > 0, do: timeout, else: 5_000
+    path = Path.join([proxy, proxy_id, command])
+
+    %{path_info: path_info} = ctx = ctx(%{path: path, params: params})
+
+    try do
+      case endpoint.__dispatch__(path_info, opts) do
+        {:plug, handler, opts} ->
+          # IO.inspect({handler, opts})
+          #%{adapter: {__MODULE__, _req}} =
+            ctx
+            |> handler.call(opts)
+            |> respond()
+      end
+    catch
+      :error, value ->
+        stack = System.stacktrace()
+        exception = Exception.normalize(:error, value, stack)
+        exit({{exception, stack}, {endpoint, :call, [ctx, opts]}})
+
+      :throw, value ->
+        stack = System.stacktrace()
+        exit({{{:nocatch, value}, stack}, {endpoint, :call, [ctx, opts]}})
+
+      :exit, value ->
+        exit({value, {endpoint, :call, [ctx, opts]}})
+    end
   end
 
   @impl Helios.Pipeline.Adapter
   def send_resp(%{owner: _owner, ref: _ref} = state, _status, response) do
-    IO.inspect("Helios.Endpoint.Facade.send_resp/3 EXECUTED!!!")
     {:ok, response, state}
   end
 
@@ -47,9 +85,10 @@ defmodule Helios.Endpoint.Facade do
          end)
 
   def defproxy(env, {proxy_module, routes}) do
-    proxy_ast = Enum.map(routes, fn {r, exprs} ->
-      proxy_call(base(env.module), r, exprs)
-    end)
+    proxy_ast =
+      Enum.map(routes, fn {r, exprs} ->
+        proxy_call(base(env.module), r, exprs)
+      end)
 
     code =
       quote @anno do
@@ -63,12 +102,19 @@ defmodule Helios.Endpoint.Facade do
     path = Enum.take_while(path, fn e -> not is_tuple(e) end)
     path = Path.join(path)
     endpoint = Module.concat([base_name, "Endpoint"])
+
     quote @anno do
       @doc "Executes `#{inspect(unquote(route.opts))}` on given endpoint by calling `#{
              Atom.to_string(unquote(route.plug)) |> String.replace("Elixir.", "")
            }`"
       def unquote(route.opts)(id, params) do
-        Helios.Endpoint.Facade.execute(unquote(endpoint), unquote(path), id, unquote(route.opts), params)
+        Helios.Endpoint.Facade.execute(
+          unquote(endpoint),
+          unquote(path),
+          id,
+          unquote(route.opts),
+          params
+        )
       end
     end
   end
@@ -79,5 +125,24 @@ defmodule Helios.Endpoint.Facade do
     |> List.pop_at(-1)
     |> elem(1)
     |> Module.concat()
+  end
+
+  defp split_path(path) do
+    segments = :binary.split(path, "/", [:global])
+    for segment <- segments, segment != "", do: segment
+  end
+
+  defp to_param(int) when is_integer(int), do: Integer.to_string(int)
+  defp to_param(bin) when is_binary(bin), do: bin
+  defp to_param(false), do: "false"
+  defp to_param(true), do: "true"
+  defp to_param(data), do: Helios.Param.to_param(data)
+
+  defp respond(%Context{status: :success, response: resp}) do
+    {:ok, resp}
+  end
+
+  defp respond(%Context{status: :failed, response: resp}) do
+    {:error, resp}
   end
 end
