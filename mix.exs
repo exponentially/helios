@@ -73,7 +73,7 @@ defmodule Helios.MixProject do
       links: %{"GitHub" => "https://github.com/exponentially/helios"},
       files:
         ~w(.formatter.exs mix.exs README.md CHANGELOG.md lib) ++
-          ~w(integration_test/cases integration_test/support)
+          ~w(integration_test/support)
     ]
   end
 
@@ -85,7 +85,9 @@ defmodule Helios.MixProject do
       # logo: "guides/images/e.png",
       source_url: "https://github.com/exponentially/helios",
       extras: [
-        "guides/Your First Aggregate.md"
+        "guides/Your First Aggregate.md",
+        "guides/Configuration.md",
+        "guides/Routing.md"
       ],
       groups_for_modules: []
     ]
