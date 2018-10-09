@@ -7,12 +7,15 @@ if Code.ensure_compiled?(Extreme) do
     alias Helios.EventJournal.Messages
     alias Extreme.Msg, as: ExMsg
 
-    @spec start_link(module(), keyword(), keyword()) :: :ignore | {:error, any()} | {:ok, pid()}
+    @impl Helios.EventJournal.Adapter
+    @spec start_link(module :: module(), config :: keyword(), opts :: keyword()) ::
+            :ignore | {:error, any()} | {:ok, pid()}
     def start_link(module, config, opts \\ []) do
       opts = Keyword.put(opts, :name, module)
       Extreme.start_link(config, opts)
     end
 
+    @impl Helios.EventJournal.Adapter
     @doc """
     Appends events to stream from given expected version. If expected version do not match
     the one that matches last event number in evenent store it will respond with {:error, :wrong_expected_version}
@@ -38,6 +41,7 @@ if Code.ensure_compiled?(Extreme) do
       end
     end
 
+    @impl Helios.EventJournal.Adapter
     def read_event(server, stream, event_number, resolve_links \\ false) do
       request = read_event_request(stream, event_number, resolve_links)
 
@@ -65,6 +69,7 @@ if Code.ensure_compiled?(Extreme) do
       end
     end
 
+    @impl Helios.EventJournal.Adapter
     def read_stream_events_forward(
           server,
           stream,
@@ -113,6 +118,7 @@ if Code.ensure_compiled?(Extreme) do
       end
     end
 
+    @impl Helios.EventJournal.Adapter
     def read_stream_events_backward(
           server,
           stream,
@@ -161,6 +167,7 @@ if Code.ensure_compiled?(Extreme) do
       end
     end
 
+    @impl Helios.EventJournal.Adapter
     def read_all_events_forward(
           server,
           {commit_position, prepare_position} = pos,
@@ -216,6 +223,7 @@ if Code.ensure_compiled?(Extreme) do
       end
     end
 
+    @impl Helios.EventJournal.Adapter
     def read_all_events_backward(
           server,
           {commit_position, prepare_position} = pos,
@@ -271,6 +279,7 @@ if Code.ensure_compiled?(Extreme) do
       end
     end
 
+    @impl Helios.EventJournal.Adapter
     def delete_stream(server, stream, expected_version, hard_delete? \\ false) do
       request = delete_stream_request(stream, expected_version, hard_delete?)
 
@@ -301,6 +310,7 @@ if Code.ensure_compiled?(Extreme) do
       end
     end
 
+    @impl Helios.EventJournal.Adapter
     def get_stream_metadata(server, stream) do
       case read_event(server, "$$" <> stream, -1) do
         {:ok, event} ->
@@ -323,6 +333,7 @@ if Code.ensure_compiled?(Extreme) do
       end
     end
 
+    @impl Helios.EventJournal.Adapter
     def set_stream_metadata(server, stream, metadata, expexted_version \\ -2) do
       message = set_strema_metadata_request(stream, metadata || %{}, expexted_version)
 
@@ -365,7 +376,9 @@ if Code.ensure_compiled?(Extreme) do
     defp append_to_stream_request(stream, events, expected_version) do
       proto_events =
         Enum.map(events, fn event_data ->
-          metadata = if event_data.metadata != nil, do: Poison.encode!(event_data.metadata), else: "{}"
+          metadata =
+            if event_data.metadata != nil, do: Poison.encode!(event_data.metadata), else: "{}"
+
           ExMsg.NewEvent.new(
             event_id: event_data.id,
             event_type: event_data.type,

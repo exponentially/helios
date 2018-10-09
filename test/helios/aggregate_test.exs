@@ -65,7 +65,7 @@ defmodule Helios.AggregateTest do
 
         assert_halted(ctx_after, false)
         assert_response(ctx_after, :created)
-      end) =~ "Executing command create_user on aggregate #{UserAggregate}"
+      end) =~ "Executing create_user at #{UserAggregate}"
     )
   end
 end

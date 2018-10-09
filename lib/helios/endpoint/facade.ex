@@ -32,8 +32,7 @@ defmodule Helios.Endpoint.Facade do
 
   def execute(endpoint, proxy, id, command, params, opts) do
     proxy_id = to_param(id)
-    timeout = Keyword.get(opts, :timeout, 5_000)
-    timeout = if timeout > 0, do: timeout, else: 5_000
+    opts = Keyword.put_new(opts, :timeout, 5_000)
     path = Path.join([proxy, proxy_id, command])
 
     %{path_info: path_info} = ctx = ctx(%{path: path, params: params})
@@ -41,11 +40,9 @@ defmodule Helios.Endpoint.Facade do
     try do
       case endpoint.__dispatch__(path_info, opts) do
         {:plug, handler, opts} ->
-          # IO.inspect({handler, opts})
-          #%{adapter: {__MODULE__, _req}} =
-            ctx
-            |> handler.call(opts)
-            |> respond()
+          ctx
+          |> handler.call(opts)
+          |> maybe_respond()
       end
     catch
       :error, value ->
@@ -107,13 +104,15 @@ defmodule Helios.Endpoint.Facade do
       @doc "Executes `#{inspect(unquote(route.opts))}` on given endpoint by calling `#{
              Atom.to_string(unquote(route.plug)) |> String.replace("Elixir.", "")
            }`"
-      def unquote(route.opts)(id, params) do
+      @spec unquote(route.opts)(id :: term, params :: map(), Keyword.t()) :: {:ok | :error, term}
+      def unquote(route.opts)(id, params, opts \\ []) do
         Helios.Endpoint.Facade.execute(
           unquote(endpoint),
           unquote(path),
           id,
           unquote(route.opts),
-          params
+          params,
+          opts
         )
       end
     end
@@ -138,11 +137,15 @@ defmodule Helios.Endpoint.Facade do
   defp to_param(true), do: "true"
   defp to_param(data), do: Helios.Param.to_param(data)
 
-  defp respond(%Context{status: :success, response: resp}) do
+  defp maybe_respond({:exit, {:timeout, _}}) do
+    {:error, :timeout}
+  end
+
+  defp maybe_respond(%Context{status: :success, response: resp}) do
     {:ok, resp}
   end
 
-  defp respond(%Context{status: :failed, response: resp}) do
+  defp maybe_respond(%Context{status: :failed, response: resp}) do
     {:error, resp}
   end
 end

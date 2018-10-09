@@ -182,7 +182,10 @@ defmodule Helios.Endpoint do
 
       # Inline render errors so we set the endpoint before calling it.
       def call(ctx, opts) do
-        ctx = Helios.Context.put_private(ctx, :helios_endpoint, __MODULE__)
+        ctx =
+          ctx
+          |> Helios.Context.put_private(:helios_endpoint, __MODULE__)
+          |> Helios.Context.put_private(:helios_timeout, Keyword.get(opts, :timeout, 5_000))
 
         try do
           super(ctx, opts)

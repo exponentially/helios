@@ -6,7 +6,7 @@ defmodule Helios.Aggregate.Server do
   import Helios.Registry, only: [whereis_or_register: 5]
   # alias Helios.Aggregate.WrapperError
 
-  @idle_timeout 60_000
+  @idle_timeout 30_000
 
   @type status :: :recovering | {:executing, Context.t()} | :ready
   @type server_state :: %__MODULE__{
@@ -16,7 +16,8 @@ defmodule Helios.Aggregate.Server do
           last_sequence_no: integer,
           last_snapshot_version: integer,
           status: status,
-          journal: module
+          journal: module,
+          last_activity_at: term
         }
 
   defstruct id: nil,
@@ -26,7 +27,8 @@ defmodule Helios.Aggregate.Server do
             last_snapshot_version: -1,
             status: :recovering,
             buffer: :queue.new(),
-            journal: nil
+            journal: nil,
+            last_activity_at: nil
 
   # CLIENT
 
@@ -43,7 +45,7 @@ defmodule Helios.Aggregate.Server do
         [endpoint, plug, id]
       )
 
-    GenServer.call(pid, {:execute, ctx})
+    GenServer.call(pid, {:execute, ctx}, Map.get(private, :helios_timeout, 5_000))
   end
 
   @spec start_link(
@@ -73,7 +75,8 @@ defmodule Helios.Aggregate.Server do
         aggregate_module: module,
         aggregate: struct(module),
         journal: journal,
-        status: :recovering
+        status: :recovering,
+        last_activity_at: DateTime.utc_now()
       )
 
     :ok = GenServer.cast(self(), :recover)
@@ -173,9 +176,13 @@ defmodule Helios.Aggregate.Server do
   end
 
   @impl GenServer
-  def handle_info(:shutdown_if_idle, %{buffer: buffer} = state) do
+  def handle_info(
+        :idlechk,
+        %{buffer: buffer, last_activity_at: inactive_since} = state
+      ) do
     with {:buffer, 0} <- {:buffer, :queue.len(buffer)},
-         {:message_queue_len, 0} <- Process.info(self(), :message_queue_len) do
+         {:message_queue_len, 0} <- Process.info(self(), :message_queue_len),
+         true <- DateTime.diff(DateTime.utc_now(), inactive_since, :millisecond) > @idle_timeout do
       {:stop, :normal, state}
     else
       {:buffer, _} ->
@@ -187,6 +194,9 @@ defmodule Helios.Aggregate.Server do
         {:noreply, s}
 
       {:message_queue_len, _} ->
+        {:noreply, schedule_shutdown(state)}
+
+      false ->
         {:noreply, schedule_shutdown(state)}
     end
   end
@@ -214,7 +224,7 @@ defmodule Helios.Aggregate.Server do
       |> maybe_reply()
       |> maybe_dequeue()
 
-    {:noreply, new_state}
+    {:noreply, %{new_state | last_activity_at: DateTime.utc_now()}}
   end
 
   defp try_execute(%Context{status: :init, state: state, private: %{helios_plug: plug}} = ctx)
@@ -372,8 +382,11 @@ defmodule Helios.Aggregate.Server do
     end)
   end
 
-  defp schedule_shutdown(state) do
-    Process.send_after(self(), :shutdown_if_idle, @idle_timeout)
+  defp schedule_shutdown(%{last_activity_at: inactive_since} = state) do
+    diff = DateTime.diff(DateTime.utc_now(), inactive_since, :millisecond)
+    timeout = @idle_timeout - diff
+    timeout = if timeout <= 0, do: 0, else: timeout
+    Process.send_after(self(), :idlechk, timeout)
     state
   end
 

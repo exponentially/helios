@@ -9,9 +9,14 @@ defmodule Helios.AggregateServerTest do
 
   use Helios.Pipeline.Test
 
+  defmodule Endpoint do
+    use Helios.Endpoint, otp_app: :helios
+  end
+
   setup do
     id = UUID.uuid4()
     {:ok, pid} = Server.start_link(:helios, {UserAggregate, id})
+
     stream_name = UserAggregate.persistance_id(id)
 
     [
@@ -31,11 +36,11 @@ defmodule Helios.AggregateServerTest do
     ctx =
       ctx(:execute, path, params)
       |> Context.put_private(:helios_plug, UserAggregate)
+      |> Context.put_private(:helios_plug_key, args.id)
       |> Context.put_private(:helios_plug_handler, :create_user)
 
-    assert %Context{} = Server.call(args.pid, ctx)
 
-    assert_receive {:ok, :created}
+    assert %Context{} = GenServer.call(args.pid, {:execute, ctx})
 
     assert {:ok,
             %{

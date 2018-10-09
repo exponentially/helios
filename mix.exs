@@ -36,9 +36,10 @@ defmodule Helios.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:elixir_uuid, "~> 1.2"},
       {:libring, "~> 1.0"},
       {:gen_state_machine, "~> 2.0"},
-      {:extreme, "~> 0.13", only: [:test], optinal: true},
+      {:extreme, "~> 0.13", only: [:test, :eventstore], optinal: true},
       {:dialyxir, "~> 1.0.0-rc.3", only: [:dev, :test], runtime: false, optinal: true},
       {:poolboy, "~> 1.5"}
     ]
