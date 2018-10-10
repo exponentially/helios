@@ -1,4 +1,7 @@
 defmodule Helios.Plugs.Logger do
+  @moduledoc """
+  Logs execution request to logger.
+  """
   require Logger
   @behaviour Helios.Pipeline.Plug
 

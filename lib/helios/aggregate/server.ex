@@ -1,4 +1,5 @@
 defmodule Helios.Aggregate.Server do
+  @moduledoc false
   use GenServer
   require Logger
   alias Helios.Context
@@ -65,7 +66,8 @@ defmodule Helios.Aggregate.Server do
     default_journal = Application.get_env(:helios, :default_journal)
 
     journal =
-      Application.get_env(otp_app, module, [])
+      otp_app
+      |> Application.get_env(module, [])
       |> Keyword.get(:journal, default_journal)
 
     state =
@@ -160,11 +162,11 @@ defmodule Helios.Aggregate.Server do
   # to ignore the handoff state, or apply your own conflict resolution
   # strategy
   def handle_cast({:helios, :resolve_conflict, remote}, local) do
-    Logger.debug("Resolving conflict with remote #{inspect(remote.peer)}.")
+    Logger.debug(fn -> "Resolving conflict with remote #{inspect(remote.peer)}." end)
 
-    Logger.debug(
+    Logger.debug(fn ->
       "Remote buffer of #{:queue.len(remote.buffer)} pending commands is merget into local process buffer."
-    )
+    end)
 
     state =
       local

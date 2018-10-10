@@ -34,20 +34,20 @@ defmodule Helios.Router.RouteTest do
 
   @tag :router_route
   test "builds expressions based on the route" do
-    exprs =
-      Route.build(
-        1,
-        :match,
-        :execute,
-        "/users/:id/create_user",
-        UserAggregate,
-        :create_user,
-        "users_create_user",
-        [:pipeline1, :pipeline2],
-        %{foo: "bar"},
-        %{bar: "baz"}
-      )
-      |> Route.exprs()
+
+    route = Route.build(
+      1,
+      :match,
+      :execute,
+      "/users/:id/create_user",
+      UserAggregate,
+      :create_user,
+      "users_create_user",
+      [:pipeline1, :pipeline2],
+      %{foo: "bar"},
+      %{bar: "baz"}
+    )
+    exprs = Route.exprs(route)
 
     assert exprs.verb_match == :execute
     assert exprs.path == ["users", {:id, [], nil}, "create_user"]

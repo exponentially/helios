@@ -1,4 +1,5 @@
 defmodule Mix.Helios do
+  @moduledoc false
   def base() do
     app_base(otp_app())
   end

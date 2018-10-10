@@ -102,7 +102,7 @@ defmodule Helios.Endpoint.Facade do
 
     quote @anno do
       @doc "Executes `#{inspect(unquote(route.opts))}` on given endpoint by calling `#{
-             Atom.to_string(unquote(route.plug)) |> String.replace("Elixir.", "")
+             unquote(route.plug) |> Atom.to_string() |> String.replace("Elixir.", "")
            }`"
       @spec unquote(route.opts)(id :: term, params :: map(), Keyword.t()) :: {:ok | :error, term}
       def unquote(route.opts)(id, params, opts \\ []) do

@@ -203,10 +203,7 @@ defmodule Helios.Registry.Tracker.IntervalTreeClock do
     {hl, el} = grow(il, l)
     {hr, er} = grow(ir, r)
 
-    cond do
-      hl < hr -> {hl + 1, {n, el, r}}
-      :else -> {hr + 1, {n, l, er}}
-    end
+    if hl < hr, do: {hl + 1, {n, el, r}}, else: {hr + 1, {n, l, er}}
   end
 
   defp grow(i, n) when is_integer(n) do

@@ -1,5 +1,9 @@
 defmodule Helios.EventJournal.Messages do
+  @moduledoc false
   defmodule ReadStreamEventsResponse do
+    @moduledoc """
+    Represents response got from event journal
+    """
     @type read_error :: :stream_not_found | :stream_deleted | String.t()
     @type t :: %__MODULE__{
             events: list(Helios.EventJournal.Messages.PersistedEvent.t()),
@@ -16,6 +20,9 @@ defmodule Helios.EventJournal.Messages do
   end
 
   defmodule Position do
+    @moduledoc """
+    Represents position in event journal
+    """
     @type t :: %__MODULE__{
             commit_position: integer,
             prepare_position: integer
@@ -37,6 +44,11 @@ defmodule Helios.EventJournal.Messages do
   end
 
   defmodule EventData do
+    @moduledoc """
+    Holds metadata and event data of emitted event.
+
+    Use this structure when you want to store event in event journal.
+    """
     @type t :: %__MODULE__{
             id: String.t(),
             type: String.t(),
@@ -45,6 +57,9 @@ defmodule Helios.EventJournal.Messages do
           }
     defstruct [:id, :type, :data, :metadata]
 
+    @doc """
+    Creates new `EventData`
+    """
     def new(id, type, data, metadata \\ %{})
 
     def new(id, type, data, metadata) when is_atom(type),
@@ -62,6 +77,9 @@ defmodule Helios.EventJournal.Messages do
   end
 
   defmodule PersistedEvent do
+    @moduledoc """
+    Represents persisted event.
+    """
     @type read_error :: :not_found | :no_stream | :stream_deleted | String.t()
     @type t :: %__MODULE__{
             stream_id: String.t(),
@@ -85,6 +103,9 @@ defmodule Helios.EventJournal.Messages do
   end
 
   defmodule ReadAllEventsResponse do
+    @moduledoc """
+    Holds read result when all events are read from event journal.
+    """
     @type read_error :: String.t()
     @type t :: %__MODULE__{
             commit_position: integer,
@@ -102,6 +123,9 @@ defmodule Helios.EventJournal.Messages do
   end
 
   defmodule StreamMetadataResponse do
+    @moduledoc """
+    Holds stream metadata.
+    """
     @type t :: %__MODULE__{
             stream: String.t(),
             is_deleted: boolean,

@@ -1,4 +1,5 @@
 defmodule Helios.Router.Subscription do
+  @moduledoc false
   alias Helios.Router.Subscription
   @default_param_key "id"
   @path_prefix "/@"

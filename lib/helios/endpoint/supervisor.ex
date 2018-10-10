@@ -17,7 +17,10 @@ defmodule Helios.Endpoint.Supervisor do
 
   @doc false
   def init({otp_app, endpoint}) do
-    id = :crypto.strong_rand_bytes(16) |> Base.encode64()
+    id =
+      16
+      |> :crypto.strong_rand_bytes()
+      |> Base.encode64()
 
     conf =
       case endpoint.init(:supervisor, [endpoint_id: id] ++ config(otp_app, endpoint)) do

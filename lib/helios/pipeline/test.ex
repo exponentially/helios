@@ -1,4 +1,5 @@
 defmodule Helios.Pipeline.Test do
+  @moduledoc false
   defmacro __using__(_) do
     quote do
       import Helios.Pipeline.Test

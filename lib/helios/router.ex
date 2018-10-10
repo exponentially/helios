@@ -50,7 +50,7 @@ defmodule Helios.Router do
             :complete_registration
           ]
 
-        subscribe MyApp.ProcessManagers.UserRegistration, to: [
+        subscribe "ce-users", MyApp.ProcessManagers.UserRegistration, to: [
                   {MyApp.Events.UserCreated, :registration_id},
                   {MyApp.Events.RegistrationStarted, :registration_id},
                   {MyApp.Events.EmailConfirmed, :registration_id},

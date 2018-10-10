@@ -1,4 +1,5 @@
 defmodule Helios.Router.Route do
+  @moduledoc false
   alias Helios.Router.Route
 
   @type verb :: :execute | :process | :trace

@@ -41,6 +41,7 @@ defmodule Helios.MixProject do
       {:gen_state_machine, "~> 2.0"},
       {:extreme, "~> 0.13", only: [:test, :eventstore], optinal: true},
       {:dialyxir, "~> 1.0.0-rc.3", only: [:dev, :test], runtime: false, optinal: true},
+      {:credo, "~> 0.10.0", only: [:dev, :test], runtime: false},
       {:poolboy, "~> 1.5"}
     ]
   end

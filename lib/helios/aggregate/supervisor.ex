@@ -1,4 +1,5 @@
 defmodule Helios.Aggregate.Supervisor do
+  @moduledoc false
   use Supervisor
 
   def child_spec(otp_app, endpoint) do

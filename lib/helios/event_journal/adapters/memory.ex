@@ -1,4 +1,9 @@
 defmodule Helios.EventJournal.Adapter.Memory do
+  @moduledoc """
+  Simple memory event journal adapter.
+
+  Events are kept in ETS table
+  """
   use GenServer
   require Logger
 
@@ -90,8 +95,10 @@ defmodule Helios.EventJournal.Adapter.Memory do
     ]
 
     persisted_events =
-      :ets.select(events(server), fun)
-      |> Enum.map(fn e -> to_persisted(e) |> elem(1) end)
+      server
+      |> events()
+      |> :ets.select(fun)
+      |> Enum.map(& elem(to_persisted(&1), 1))
 
     last_event_number = get_stream_event_number(server, stream)
     last_commit_position = get_idx(server)
@@ -150,8 +157,10 @@ defmodule Helios.EventJournal.Adapter.Memory do
     ]
 
     persisted_events =
-      :ets.select(events(server), fun)
-      |> Enum.map(fn e -> to_persisted(e) |> elem(1) end)
+      server
+      |> events()
+      |> :ets.select(fun)
+      |> Enum.map(& elem(to_persisted(&1), 1))
       |> Enum.reverse()
 
     last_event_number = get_stream_event_number(server, stream)
@@ -208,8 +217,10 @@ defmodule Helios.EventJournal.Adapter.Memory do
     ]
 
     persisted_events =
-      :ets.select(events(server), fun)
-      |> Enum.map(fn e -> to_persisted(e) |> elem(1) end)
+      server
+      |> events()
+      |> :ets.select(fun)
+      |> Enum.map(& elem(to_persisted(&1), 1))
 
     case List.last(persisted_events) do
       nil ->
@@ -266,8 +277,10 @@ defmodule Helios.EventJournal.Adapter.Memory do
     ]
 
     persisted_events =
-      :ets.select(events(server), fun)
-      |> Enum.map(fn e -> to_persisted(e) |> elem(1) end)
+      server
+      |> events()
+      |> :ets.select(fun)
+      |> Enum.map(& elem(to_persisted(&1), 1))
 
     case List.last(persisted_events) do
       nil ->
@@ -359,16 +372,15 @@ defmodule Helios.EventJournal.Adapter.Memory do
 
     last_event_number = get_stream_event_number(s.module, stream)
 
-    if(expected_version != last_event_number) do
-      {:reply, {:error, :wrong_expected_version}, s}
-    else
+    if expected_version == last_event_number do
       fun = [
         {{:"$1", :"$2", :"$3", :"$4", :"$5", :"$6", :"$7", :"$8"},
          [{:==, :"$2", {:const, stream}}], [{{:"$1"}}]}
       ]
 
       persisted =
-        events(s.module)
+        s.module
+        |> events()
         |> :ets.select(fun)
 
       persisted
@@ -392,6 +404,8 @@ defmodule Helios.EventJournal.Adapter.Memory do
           pos = %Position{commit_position: idx, prepare_position: idx}
           {:reply, {:ok, pos}, s}
       end
+    else
+      {:reply, {:error, :wrong_expected_version}, s}
     end
   end
 

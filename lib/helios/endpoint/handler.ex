@@ -1,4 +1,5 @@
 defmodule Helios.Endpoint.Handler do
+  @moduledoc false
   use GenServer
   require Logger
 

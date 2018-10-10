@@ -1,4 +1,5 @@
 defmodule Mix.Tasks.Helios.Routes do
+  @moduledoc false
   use Mix.Task
   alias Helios.Router.ConsoleFormatter
 

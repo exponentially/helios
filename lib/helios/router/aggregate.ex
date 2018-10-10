@@ -1,4 +1,5 @@
 defmodule Helios.Router.Aggregate do
+  @moduledoc false
   alias Helios.Router.Aggregate
   @default_param_key "id"
 

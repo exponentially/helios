@@ -164,7 +164,8 @@ defmodule Helios.Registry.Tracker do
     {strategy_impl, init_fn, args} = config[:distribution_strategy]
 
     strategy =
-      apply(strategy_impl, init_fn, args)
+      strategy_impl
+      |> apply(init_fn, args)
       |> strategy_impl.add_node(Node.self())
       |> strategy_impl.add_nodes(nodelist)
 
@@ -379,32 +380,31 @@ defmodule Helios.Registry.Tracker do
       when node(from) == sync_node do
     Process.demonitor(state.sync_ref, [:flush])
 
-    cond do
+    if length(nodes) > 0 do
       # Something weird happened during sync, so try a different node,
       # with this implementation, we *could* end up selecting the same node
       # again, but that's fine as this is effectively a retry
-      length(nodes) > 0 ->
-        warn("a problem occurred during sync, choosing a new node to sync with")
-        # we need to choose a different node to sync with and try again
-        new_sync_node = Enum.random(nodes)
-        ref = Process.monitor({tracker_name(state.endpoint), new_sync_node})
+      warn("a problem occurred during sync, choosing a new node to sync with")
+      # we need to choose a different node to sync with and try again
+      new_sync_node = Enum.random(nodes)
+      ref = Process.monitor({tracker_name(state.endpoint), new_sync_node})
 
-        GenStateMachine.cast(
-          {tracker_name(state.endpoint), new_sync_node},
-          {:sync, self(), state.clock}
-        )
+      GenStateMachine.cast(
+        {tracker_name(state.endpoint), new_sync_node},
+        {:sync, self(), state.clock}
+      )
 
-        {:keep_state, %{state | sync_node: new_sync_node, sync_ref: ref}}
+      {:keep_state, %{state | sync_node: new_sync_node, sync_ref: ref}}
 
       # Something went wrong during sync, but there are no other nodes to sync with,
       # not even the original sync node (which probably implies it shutdown or crashed),
       # so we're the sync node now
-      :else ->
-        warn(
-          "a problem occurred during sync, but no other available sync targets, becoming seed node"
-        )
+    else
+      warn(
+        "a problem occurred during sync, but no other available sync targets, becoming seed node"
+      )
 
-        {:next_state, :tracking, %{state | pending_sync_reqs: [], sync_node: nil, sync_ref: nil}}
+      {:next_state, :tracking, %{state | pending_sync_reqs: [], sync_node: nil, sync_ref: nil}}
     end
   end
 
@@ -424,7 +424,12 @@ defmodule Helios.Registry.Tracker do
         # The local clock dominates the remote clock, so the local node will begin the sync
         info("syncing to #{sync_node} based on tracker clock")
         {lclock, rclock} = Clock.fork(state.clock)
-        GenStateMachine.cast(from, {:sync_recv, self(), rclock, get_registry_snapshot(state.endpoint)})
+
+        GenStateMachine.cast(
+          from,
+          {:sync_recv, self(), rclock, get_registry_snapshot(state.endpoint)}
+        )
+
         {:next_state, :awaiting_sync_ack, %{state | clock: lclock}}
 
       result when result in [:eq, :concurrent] and sync_node > local_node ->
@@ -436,7 +441,12 @@ defmodule Helios.Registry.Tracker do
         # The local node begins the sync
         info("syncing to #{sync_node} based on node precedence")
         {lclock, rclock} = Clock.fork(state.clock)
-        GenStateMachine.cast(from, {:sync_recv, self(), rclock, get_registry_snapshot(state.endpoint)})
+
+        GenStateMachine.cast(
+          from,
+          {:sync_recv, self(), rclock, get_registry_snapshot(state.endpoint)}
+        )
+
         {:next_state, :awaiting_sync_ack, %{state | clock: lclock}}
     end
   end
@@ -596,30 +606,32 @@ defmodule Helios.Registry.Tracker do
       ref -> Process.demonitor(ref, [:flush])
     end
 
-    cond do
-      Enum.member?(state.nodes, pending_node) ->
-        info("clearing pending sync request for #{pending_node}")
-        {lclock, rclock} = Clock.fork(state.clock)
-        ref = Process.monitor(pid)
-        GenStateMachine.cast(pid, {:sync_recv, self(), rclock, get_registry_snapshot(state.endpoint)})
+    if Enum.member?(state.nodes, pending_node) do
+      info("clearing pending sync request for #{pending_node}")
+      {lclock, rclock} = Clock.fork(state.clock)
+      ref = Process.monitor(pid)
 
-        new_state = %{
-          state
-          | sync_node: node(pid),
-            sync_ref: ref,
-            pending_sync_reqs: pending,
-            clock: lclock
-        }
+      GenStateMachine.cast(
+        pid,
+        {:sync_recv, self(), rclock, get_registry_snapshot(state.endpoint)}
+      )
 
-        {:next_state, :awaiting_sync_ack, new_state}
+      new_state = %{
+        state
+        | sync_node: node(pid),
+          sync_ref: ref,
+          pending_sync_reqs: pending,
+          clock: lclock
+      }
 
-      :else ->
-        resolve_pending_sync_requests(%{
-          state
-          | sync_node: nil,
-            sync_ref: nil,
-            pending_sync_reqs: pending
-        })
+      {:next_state, :awaiting_sync_ack, new_state}
+    else
+      resolve_pending_sync_requests(%{
+        state
+        | sync_node: nil,
+          sync_ref: nil,
+          pending_sync_reqs: pending
+      })
     end
   end
 
@@ -929,49 +941,45 @@ defmodule Helios.Registry.Tracker do
           end
 
         entry(name: name, pid: pid, meta: %{mfa: _mfa} = meta) = obj, lclock when is_map(meta) ->
-          cond do
-            Enum.member?(state.nodes, node(pid)) ->
-              # the parent node is still up
-              lclock
+          if Enum.member?(state.nodes, node(pid)) do
+            # the parent node is still up
+            lclock
+          else
+            # pid is dead, we're going to restart it
+            case state.strategy_impl.key_to_node(state.strategy, name) do
+              :undefined ->
+                # No node available to restart process on, so remove registration
+                warn("no node available to restart #{inspect(name)}")
+                {:ok, new_state} = remove_registration(obj, %{state | clock: lclock})
+                new_state.clock
 
-            :else ->
-              # pid is dead, we're going to restart it
-              case state.strategy_impl.key_to_node(state.strategy, name) do
-                :undefined ->
-                  # No node available to restart process on, so remove registration
-                  warn("no node available to restart #{inspect(name)}")
-                  {:ok, new_state} = remove_registration(obj, %{state | clock: lclock})
-                  new_state.clock
+              ^current_node ->
+                debug("restarting #{inspect(name)} on #{current_node}")
+                {:ok, new_state} = remove_registration(obj, %{state | clock: lclock})
 
-                ^current_node ->
-                  debug("restarting #{inspect(name)} on #{current_node}")
-                  {:ok, new_state} = remove_registration(obj, %{state | clock: lclock})
+                case do_track(%Tracking{name: name, meta: meta}, new_state) do
+                  :keep_state_and_data -> new_state.clock
+                  {:keep_state, new_state} -> new_state.clock
+                end
 
-                  case do_track(%Tracking{name: name, meta: meta}, new_state) do
-                    :keep_state_and_data -> new_state.clock
-                    {:keep_state, new_state} -> new_state.clock
-                  end
-
-                _other_node ->
-                  # other_node will tell us to unregister/register the restarted pid
-                  lclock
-              end
+              _other_node ->
+                # other_node will tell us to unregister/register the restarted pid
+                lclock
+            end
           end
 
         entry(name: name, pid: pid) = obj, lclock ->
           pid_node = node(pid)
 
-          cond do
-            pid_node == current_node or Enum.member?(state.nodes, pid_node) ->
-              # the parent node is still up
-              lclock
+          if pid_node == current_node or Enum.member?(state.nodes, pid_node) do
+            # the parent node is still up
+            lclock
+          else
+            # the parent node is down, but we cannot restart this pid, so unregister it
+            debug("removing registration for #{inspect(name)}, #{pid_node} is down")
 
-            :else ->
-              # the parent node is down, but we cannot restart this pid, so unregister it
-              debug("removing registration for #{inspect(name)}, #{pid_node} is down")
-
-              {:ok, new_state} = remove_registration(obj, %{state | clock: lclock})
-              new_state.clock
+            {:ok, new_state} = remove_registration(obj, %{state | clock: lclock})
+            new_state.clock
           end
       end)
 
@@ -1237,18 +1245,18 @@ defmodule Helios.Registry.Tracker do
          from,
          %{strategy_impl: strategy_impl} = state
        ) do
-    Registry.get_by_name(state.endpoint, worker_name)
+    state.endpoint
+    |> Registry.get_by_name(worker_name)
     |> case do
       :undefined ->
         # Worker was already removed from registry -> do nothing
         debug("The node #{worker_name} was not found in the registry")
 
       entry(name: name, pid: pid, meta: %{mfa: _mfa} = meta) = obj ->
-        case strategy_impl.remove_node(state.strategy, state.self)
-             |> strategy_impl.key_to_node(name) do
-          {:error, {:invalid_ring, :no_nodes}} ->
-            debug("Cannot handoff #{inspect(name)} because there is no other node left")
-
+        with removed_node <- strategy_impl.remove_node(state.strategy, state.self),
+             {:error, {:invalid_ring, :no_nodes}} <- strategy_impl.key_to_node(removed_node, name) do
+          debug("Cannot handoff #{inspect(name)} because there is no other node left")
+        else
           other_node ->
             debug("#{inspect(name)} has requested to be terminated and resumed on another node")
 
@@ -1282,7 +1290,11 @@ defmodule Helios.Registry.Tracker do
       {lclock, rclock} = Clock.fork(clock)
       sync_node = node(from)
       ref = Process.monitor(from)
-      GenStateMachine.cast(from, {:sync_recv, self(), rclock, get_registry_snapshot(state.endpoint)})
+
+      GenStateMachine.cast(
+        from,
+        {:sync_recv, self(), rclock, get_registry_snapshot(state.endpoint)}
+      )
 
       {:next_state, :awaiting_sync_ack,
        %{state | clock: lclock, sync_node: sync_node, sync_ref: ref}}
@@ -1778,28 +1790,26 @@ defmodule Helios.Registry.Tracker do
   # A remote node went down, we need to update the distribution strategy and handle restarting/shifting processes
   # as needed based on the new topology
   defp nodedown(%TrackerState{nodes: nodes, strategy: strategy} = state, node) do
-    cond do
-      Enum.member?(nodes, node) ->
-        info("nodedown #{node}")
-        strategy = state.strategy_impl.remove_node(strategy, node)
+    if Enum.member?(nodes, node) do
+      info("nodedown #{node}")
+      strategy = state.strategy_impl.remove_node(strategy, node)
 
-        pending_reqs =
-          Enum.filter(state.pending_sync_reqs, fn
-            ^node -> false
-            _ -> true
-          end)
+      pending_reqs =
+        Enum.filter(state.pending_sync_reqs, fn
+          ^node -> false
+          _ -> true
+        end)
 
-        new_state = %{
-          state
-          | nodes: nodes -- [node],
-            strategy: strategy,
-            pending_sync_reqs: pending_reqs
-        }
+      new_state = %{
+        state
+        | nodes: nodes -- [node],
+          strategy: strategy,
+          pending_sync_reqs: pending_reqs
+      }
 
-        {:ok, new_state, {:topology_change, {:nodedown, node}}}
-
-      :else ->
-        {:ok, state}
+      {:ok, new_state, {:topology_change, {:nodedown, node}}}
+    else
+      {:ok, state}
     end
   end
 

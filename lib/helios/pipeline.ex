@@ -21,14 +21,12 @@ defmodule Helios.Pipeline do
       @doc false
       def call(ctx, handler) when is_atom(handler) do
         ctx =
-          update_in(
-            ctx.private,
-            fn private ->
+          ctx.private
+          |> update_in(fn private ->
               private
               |> Map.put(:helios_plug, __MODULE__)
               |> Map.put(:helios_plug_handler, handler)
-            end
-          )
+          end)
           |> Map.put(:status, :executing)
 
         helios_plug_pipeline(ctx, handler)

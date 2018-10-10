@@ -1,4 +1,9 @@
 defmodule Helios.Pipeline.Adapter do
+  @moduledoc """
+  Each message that comes from outer world needs to be adopted to message context.
+  By implementing `send_resp/3` adpater should return response body that is sent to
+  caller.
+  """
   alias Helios.Context
 
   @type payload :: term

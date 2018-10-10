@@ -1,15 +1,14 @@
 defmodule Helios.Registry do
+  @moduledoc false
   use GenServer
   alias Helios.Registry.Tracker
   import Helios.Registry.Tracker.Entry
   alias Helios.Registry.Tracker.Entry
 
-
   def child_spec(otp_app, endpoint) do
     %{
       id: __MODULE__,
-      start:
-        {__MODULE__, :start_link,[otp_app, endpoint]},
+      start: {__MODULE__, :start_link, [otp_app, endpoint]},
       type: :worker
     }
   end
@@ -71,7 +70,9 @@ defmodule Helios.Registry do
 
   @spec members(endpoint :: module, group :: term) :: [pid]
   def members(endpoint, group) do
-    :ets.select(registry_name(endpoint), [
+    endpoint
+    |> registry_name()
+    |> :ets.select([
       {entry(name: :"$1", pid: :"$2", ref: :"$3", meta: %{group => :"$4"}, clock: :"$5"), [],
        [:"$_"]}
     ])
@@ -90,7 +91,9 @@ defmodule Helios.Registry do
 
   @spec multi_call(module, term, term, pos_integer) :: [term]
   def multi_call(endpoint, group, msg, timeout \\ 5_000) do
-    Enum.map(members(endpoint, group), fn member ->
+    endpoint
+    |> members(group)
+    |> Enum.map(fn member ->
       Task.Supervisor.async_nolink(Helios.TaskSupervisor, fn ->
         GenServer.call(member, msg, timeout)
       end)
@@ -113,7 +116,9 @@ defmodule Helios.Registry do
 
   @spec all(module) :: [{name :: term(), pid()}]
   def all(endpoint) do
-    :ets.tab2list(registry_name(endpoint))
+    endpoint
+    |> registry_name()
+    |> :ets.tab2list()
     |> Enum.map(fn entry(name: name, pid: pid) -> {name, pid} end)
   end
 
@@ -241,6 +246,7 @@ defmodule Helios.Registry do
 
   def init([otp_app, endpoint]) do
     table_name = registry_name(endpoint)
+
     table =
       :ets.new(table_name, [
         :set,

@@ -1,4 +1,7 @@
 defmodule Helios.EventJournal.Adapter do
+  @moduledoc """
+  Defines behaviour for EventJournal adapter.
+  """
   alias Helios.EventJournal.Messages
 
   @type stream_name :: String.t()

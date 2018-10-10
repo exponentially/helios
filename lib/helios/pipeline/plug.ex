@@ -1,4 +1,7 @@
 defmodule Helios.Pipeline.Plug do
+  @moduledoc """
+  Behaviour, when implmented, such module can be used in message context pipeline
+  """
   alias Helios.Context
 
   @type opts :: any

@@ -1,4 +1,5 @@
 defmodule Helios.Logger do
+  @moduledoc false
   require Logger
 
   defmacro __using__(_) do
@@ -16,7 +17,7 @@ defmodule Helios.Logger do
 
     quote do
       if unquote(log_level) in [:debug] do
-        Logger.debug("[#{inspect unquote(mod)}:#{unquote(fun)}/#{unquote(arity)}] #{unquote(msg)}")
+        Logger.debug(fn -> "[#{inspect unquote(mod)}:#{unquote(fun)}/#{unquote(arity)}] #{unquote(msg)}" end)
       end
     end
   end
