@@ -20,6 +20,7 @@ defmodule Helios do
 
     children = [
       # todo: implement code reloader
+      {Task.Supervisor, name: Helios.Registry.TaskSupervisor},
       {Helios.CodeReloader.Server, []}
     ]
 

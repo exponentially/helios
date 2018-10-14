@@ -84,6 +84,7 @@ defmodule Helios.EventJournal do
       end
 
       @impl true
+      @doc "Reads single event from stream"
       def read_event(stream, event_number, resolve_links \\ false) do
         __adapter__().read_event(__MODULE__, stream, event_number, resolve_links)
       end
