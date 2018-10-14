@@ -36,6 +36,9 @@ if Code.ensure_compiled?(Extreme) do
         {:error, :AccessDenied, _} ->
           {:error, :access_denied}
 
+        {:error, :CommitTimeout, _} ->
+          {:error, :commit_timeout}
+
         other ->
           {:error, other}
       end

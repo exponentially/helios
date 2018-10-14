@@ -10,17 +10,17 @@ defmodule Helios.Router.Subscription do
   The `Phoenix.Router.Resource` struct. It stores:
 
     * `:path` - the path as string (not normalized) and it is allways equal to `"#{@path_prefix}"`
-    * `:events` - the commands to which only this subscriber should repspond to with attribute name that tells how to extract id from messasge
+    * `:messages` - the messages to which only this subscriber should repspond to with attribute name that tells how to extract id from messasge
     * `:param` - the param to be used in routes (not normalized)
     * `:route` - the context for resource routes
     * `:subscriber` - the subscriber as an atom
 
   """
-  defstruct [:path, :events, :param, :route, :subscriber, :singleton, :member, :collection]
+  defstruct [:path, :messages, :param, :route, :subscriber, :singleton, :member, :collection]
 
   @type t :: %Subscription{
           path: String.t(),
-          events: list(),
+          messages: list(),
           param: String.t(),
           route: keyword,
           subscriber: atom(),
@@ -44,7 +44,7 @@ defmodule Helios.Router.Subscription do
     # TODO: this is not used currently but should work when set to true and
     #       distributed `IdentityServer` is imeplemented
     singleton = Keyword.get(options, :singleton, false)
-    commands = extract_commands(options, singleton)
+    messages = extract_messages(options, singleton)
 
     route = [as: as, private: private, assigns: assigns]
     collection = [path: path, as: as, private: private, assigns: assigns]
@@ -53,7 +53,7 @@ defmodule Helios.Router.Subscription do
 
     %Subscription{
       path: path,
-      events: commands,
+      messages: messages,
       param: param,
       route: route,
       subscriber: subscriber,
@@ -63,7 +63,7 @@ defmodule Helios.Router.Subscription do
     }
   end
 
-  defp extract_commands(opts, _singleton?) do
+  defp extract_messages(opts, _singleton?) do
     only = Keyword.get(opts, :to)
     except = Keyword.get(opts, :except)
 

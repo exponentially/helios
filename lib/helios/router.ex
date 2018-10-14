@@ -27,8 +27,7 @@ defmodule Helios.Router do
   As in case of Helios.Aggregate, router too can have plugs, that will be executed in
   specified order before or after aggregate pipeline is executed.
 
-  ### Example
-
+  ## Example
       defmodule MyApp.Router do
         use Helios.Router
 
@@ -50,7 +49,7 @@ defmodule Helios.Router do
             :complete_registration
           ]
 
-        subscribe "ce-users", MyApp.ProcessManagers.UserRegistration, to: [
+        subscribe MyApp.ProcessManagers.UserRegistration, to: [
                   {MyApp.Events.UserCreated, :registration_id},
                   {MyApp.Events.RegistrationStarted, :registration_id},
                   {MyApp.Events.EmailConfirmed, :registration_id},

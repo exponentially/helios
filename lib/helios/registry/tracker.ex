@@ -1168,7 +1168,7 @@ defmodule Helios.Registry.Tracker do
       other_node ->
         _ =
           Task.Supervisor.start_child(Helios.Registry.TaskSupervisor, fn ->
-            case :rpc.call(other_node, Helios.Registry, :get_by_name, [name], :infinity) do
+            case :rpc.call(other_node, Helios.Registry, :get_by_name, [endpoint, name], :infinity) do
               :undefined ->
                 GenStateMachine.reply(from, :undefined)
 

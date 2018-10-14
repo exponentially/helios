@@ -1,6 +1,7 @@
 defmodule Helios.Endpoint.Facade do
   @moduledoc false
   alias Helios.Context
+  require Logger
   @behaviour Helios.Pipeline.Adapter
 
   def ctx(%{path: path, params: params}) do
@@ -137,8 +138,14 @@ defmodule Helios.Endpoint.Facade do
   defp to_param(true), do: "true"
   defp to_param(data), do: Helios.Param.to_param(data)
 
+
   defp maybe_respond({:exit, {:timeout, _}}) do
     {:error, :timeout}
+  end
+
+  defp maybe_respond({:exit, reason}) do
+    Logger.error(fn -> "Received :exit signal with reson \n#{inspect reason}" end)
+    {:error, :server_error}
   end
 
   defp maybe_respond(%Context{status: :success, response: resp}) do
