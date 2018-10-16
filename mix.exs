@@ -36,6 +36,7 @@ defmodule Helios.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:ex_doc, ">= 0.0.0", only: :dev},
       {:elixir_uuid, "~> 1.2"},
       {:libring, "~> 1.0"},
       {:gen_state_machine, "~> 2.0"},

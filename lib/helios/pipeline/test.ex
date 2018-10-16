@@ -10,7 +10,7 @@ defmodule Helios.Pipeline.Test do
   alias Helios.Context
 
   @spec ctx(atom(), binary(), map()) :: Context.t()
-  def ctx(method, path, params \\ nil) do
+  def ctx(method, path, params \\ %{}) do
     Helios.Pipeline.Adapter.Test.ctx(%Context{}, method, path, params)
   end
 

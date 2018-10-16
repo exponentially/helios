@@ -151,7 +151,7 @@ defmodule Helios.Router.Scope do
   @doc """
   Returns true if the module's definition is currently within a scope block.
   """
-  @spec inside_scope?(module) :: boolean
+  @spec inside_scope?(module) :: boolean() | no_return()
   def inside_scope?(module), do: length(get_stack(module)) > 1
 
   @doc """

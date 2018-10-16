@@ -4,7 +4,7 @@ defmodule Helios.Pipeline.Plug do
   """
   alias Helios.Context
 
-  @type opts :: any
+  @type opts :: Keyword.t()
 
   @callback init(opts) :: opts
 

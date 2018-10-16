@@ -98,7 +98,7 @@ defmodule Helios.EventJournal.Adapter.Memory do
       server
       |> events()
       |> :ets.select(fun)
-      |> Enum.map(& elem(to_persisted(&1), 1))
+      |> Enum.map(&elem(to_persisted(&1), 1))
 
     last_event_number = get_stream_event_number(server, stream)
     last_commit_position = get_idx(server)
@@ -160,7 +160,7 @@ defmodule Helios.EventJournal.Adapter.Memory do
       server
       |> events()
       |> :ets.select(fun)
-      |> Enum.map(& elem(to_persisted(&1), 1))
+      |> Enum.map(&elem(to_persisted(&1), 1))
       |> Enum.reverse()
 
     last_event_number = get_stream_event_number(server, stream)
@@ -220,7 +220,7 @@ defmodule Helios.EventJournal.Adapter.Memory do
       server
       |> events()
       |> :ets.select(fun)
-      |> Enum.map(& elem(to_persisted(&1), 1))
+      |> Enum.map(&elem(to_persisted(&1), 1))
 
     case List.last(persisted_events) do
       nil ->
@@ -280,7 +280,7 @@ defmodule Helios.EventJournal.Adapter.Memory do
       server
       |> events()
       |> :ets.select(fun)
-      |> Enum.map(& elem(to_persisted(&1), 1))
+      |> Enum.map(&elem(to_persisted(&1), 1))
 
     case List.last(persisted_events) do
       nil ->

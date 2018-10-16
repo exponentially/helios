@@ -60,8 +60,8 @@ defmodule Helios.Aggregate.Server do
 
   # SERVER
 
-  @impl true
-  @spec init({atom(), module(), term()}) :: {:ok, __MODULE__.server_state()}
+  @impl GenServer
+  @spec init([...]) :: {:ok, __MODULE__.server_state()}
   def init([otp_app, module, id]) do
     default_journal = Application.get_env(:helios, :default_journal)
 
@@ -210,7 +210,14 @@ defmodule Helios.Aggregate.Server do
     {:stop, :shutdown, state}
   end
 
-  def handle_info(msg, state), do: super(msg, state)
+  def handle_info(msg, state) do
+    Logger.warn(
+      fn -> "Received unexpected handle_info message #{inspect(msg)}." end,
+      module: inspect(__MODULE__)
+    )
+
+    {:noreply, state}
+  end
 
   # SERVER PRIVATE
   defp handle_execute(ctx, %{aggregate: aggregate} = s) do
@@ -332,11 +339,15 @@ defmodule Helios.Aggregate.Server do
 
   defp maybe_dequeue(s), do: s
 
-  defp do_dequeue({:empty, {[], []} = buffer}, s), do: %{s | buffer: buffer}
+  defp do_dequeue({value, buffer}, s) do
+    case value do
+      :empty ->
+        %{s | buffer: :queue.new()}
 
-  defp do_dequeue({{:value, {:execute, ctx}}, buffer}, s) do
-    GenServer.cast(self(), {:execute, ctx})
-    do_dequeue(:queue.out(buffer), s)
+      {:value, {:execute, ctx}} ->
+        GenServer.cast(self(), {:execute, ctx})
+        do_dequeue(:queue.out(buffer), s)
+    end
   end
 
   defp load_snapshot(state) do

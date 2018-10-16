@@ -97,7 +97,7 @@ defmodule Helios.Endpoint.Instrument do
 
   # Strips a `Macro.Env` struct, leaving only interesting compile-time metadata.
   @doc false
-  @spec strip_caller(Macro.Env.t) :: %{}
+  @spec strip_caller(Macro.Env.t) :: map()
   def strip_caller(%Macro.Env{module: mod, function: fun, file: file, line: line}) do
     caller = %{module: mod, function: form_fa(fun), file: file, line: line}
 

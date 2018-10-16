@@ -228,7 +228,7 @@ defmodule Helios.Registry do
     :ets.foldl(fun, acc, registry_name(endpoint))
   end
 
-  @spec update(module(), term(), Keyword.t()) :: boolean
+  @spec update(module(), term(), Keyword.t()) :: term()
   defmacro update(endpoint, key, updates) do
     fields = Enum.map(updates, fn {k, v} -> {Entry.index(k) + 1, v} end)
 
