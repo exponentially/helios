@@ -1,4 +1,21 @@
 defmodule Helios.Endpoint do
+  @moduledoc """
+  Entry point for domain.
+
+  It holds
+
+  ## Example
+
+    defmodule MyApp.Endpoint do
+      use Helios.Endpoint, otp_app: :my_app
+
+      # add any plugs you need since endpoint behavise like pipeline
+      # plug MyApp.SomePlug
+
+      plug MyApp.Router
+    end
+  """
+
   @type topic :: String.t()
   @type event :: String.t()
   @type msg :: map

@@ -1,6 +1,8 @@
 defmodule Helios.Aggregate do
   @moduledoc """
   Aggregate behaviour.
+
+  Once implemented add command mapping to router `Helios.Router`.
   """
 
   alias Helios.Context
