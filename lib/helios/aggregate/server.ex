@@ -216,7 +216,7 @@ defmodule Helios.Aggregate.Server do
   defp handle_execute(ctx, %{aggregate: aggregate} = s) do
     ctx =
       ctx
-      |> Context.put_private(:helios_plug_state, aggregate)
+      |> put_aggregate(aggregate)
       |> try_execute()
 
     new_state =
@@ -227,6 +227,10 @@ defmodule Helios.Aggregate.Server do
       |> maybe_dequeue()
 
     {:noreply, %{new_state | last_activity_at: DateTime.utc_now()}}
+  end
+
+  defp put_aggregate(ctx, aggregate) do
+    %{ctx | assigns: Map.put(ctx.assigns, :aggregate, aggregate)}
   end
 
   defp try_execute(%Context{status: :init, state: state, private: %{helios_plug: plug}} = ctx)
@@ -262,11 +266,10 @@ defmodule Helios.Aggregate.Server do
             apply(s.aggregate_module, :apply_event, [event.data, agg])
           end)
 
-        new_ctx = %{
+        new_ctx =
           ctx
-          | status: :success,
-            private: %{ctx.private | helios_plug_state: aggregate}
-        }
+          |> Map.put(:status, :success)
+          |> put_aggregate(aggregate)
 
         %{
           s

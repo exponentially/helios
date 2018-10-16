@@ -51,7 +51,7 @@ defmodule Helios.Aggregate do
     end
   end
 
-  def state(%Context{private: %{helios_plug_state: state}} = _), do: state
+  def state(%Context{assigns: %{aggregate: aggregate}} = _), do: aggregate
 
   def state(_ctx), do: nil
 end
