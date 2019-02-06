@@ -1,8 +1,8 @@
 defmodule Helios.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
-  @journal_adapters [:eventstore]
+  @version "0.2.0"
+  @journal_adapters ["eventstore"]
 
   def project do
     [
@@ -10,7 +10,7 @@ defmodule Helios.MixProject do
       version: @version,
       elixir: "~> 1.6",
       start_permanent: Mix.env() == :prod,
-      test_paths: test_paths(Mix.env()),
+      test_paths: test_paths(System.get_env("JOURNAL_ADAPTER")),
       build_per_environment: false,
       deps: deps(),
 
@@ -36,7 +36,7 @@ defmodule Helios.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ex_doc, ">= 0.0.0", only: :dev},
+      {:ex_doc, ">= 0.0.0", only: [:test, :dev]},
       {:elixir_uuid, "~> 1.2"},
       {:libring, "~> 1.0"},
       {:gen_state_machine, "~> 2.0"},
@@ -59,10 +59,10 @@ defmodule Helios.MixProject do
   defp env_run(env, args) do
     args = if IO.ANSI.enabled?, do: ["--color"|args], else: ["--no-color"|args]
 
-    IO.puts "==> Running tests for MIX_ENV=#{env} mix test"
-    {_, res} = System.cmd "mix", ["test"|args],
+    IO.puts "==> Running tests for JOURNAL_ADAPTER=#{env} mix test"
+    {_, res} = System.cmd "mix", ["test" | args],
                           into: IO.binstream(:stdio, :line),
-                          env: [{"MIX_ENV", to_string(env)}]
+                          env: [{"MIX_ENV", "test"}, {"JOURNAL_ADAPTER", env}]
 
     if res > 0 do
       System.at_exit(fn _ -> exit({:shutdown, 1}) end)
@@ -82,7 +82,7 @@ defmodule Helios.MixProject do
 
   defp docs() do
     [
-      main: "Helios",
+      main: "your-first-aggregate",
       source_ref: "v#{@version}",
       canonical: "http://hexdocs.pm/helios",
       # logo: "guides/images/e.png",
@@ -92,7 +92,40 @@ defmodule Helios.MixProject do
         "guides/Configuration.md",
         "guides/Routing.md"
       ],
-      groups_for_modules: []
+      groups_for_modules: [
+        "Aggregate": [
+          Helios.Aggregate,
+          Helios.Aggregate.Server,
+          Helios.Aggregate.Supervisor
+        ],
+        "Pipeline": [
+          Helios.Context,
+          Helios.Pipeline,
+          Helios.Pipeline.Adapter,
+          Helios.Pipeline.Builder,
+          Helios.Pipeline.Plug,
+          Helios.Plugs.Logger
+        ],
+        "Event Journal": [
+          Helios.EventJournal,
+          Helios.EventJournal.Adapter,
+          Helios.EventJournal.Messages.EventData,
+          Helios.EventJournal.Messages.PersistedEvent,
+          Helios.EventJournal.Messages.Position,
+          Helios.EventJournal.Messages.ReadAllEventsResponse,
+          Helios.EventJournal.Messages.ReadStreamEventsResponse,
+          Helios.EventJournal.Messages.StreamMetadataResponse,
+        ],
+        "Testing": [
+          Helios.Pipeline.Test,
+        ],
+        "Endpoint": [
+          Helios.Endpoint,
+          Helios.Endpoint.Facade,
+          Helios.Endpoint.Supervisor,
+
+        ]
+      ]
     ]
   end
 end

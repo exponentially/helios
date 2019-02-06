@@ -33,30 +33,31 @@ defmodule Helios.Router.Scope do
   in case of `aggregate` sufix "Aggregate".
   """
   @spec route(
-          Route.line(),
-          module,
+          Macro.Env.line(),
+          Macro.Env.module(),
           Route.kind(),
           Route.verb(),
           Route.path(),
           Route.plug(),
-          Route.plug_opts(),
+          Route.opts(),
           keyword()
-        ) :: Route.t()
+        ) :: Route.t() | no_return
   def route(line, module, kind, verb, path, plug, plug_opts, opts) do
     path = validate_path(path)
     private = Keyword.get(opts, :private, %{})
     assigns = Keyword.get(opts, :assigns, %{})
     as = Keyword.get(opts, :as, Helios.Naming.process_name(plug, "Aggregate"))
 
-    {path, alias, as, pipes, private, assigns} = join(module, path, plug, as, private, assigns)
+    # {String.t(), atom(), String.t(), list(atom()), map() | nil, map() | nil}
+    {path, path_alias, as, pipes, private, assigns} = join(module, path, plug, as, private, assigns)
 
-    Route.build(line, kind, verb, path, alias, plug_opts, as, pipes, private, assigns)
+    Route.build(line, kind, verb, path, path_alias, plug_opts, as, pipes, private, assigns)
   end
 
   @doc """
   Validates a path is a string and contains a leading prefix.
   """
-  @spec validate_path(path :: String.t()) :: String.t() | no_return
+  @spec validate_path(path :: String.t()) :: String.t()
   def validate_path("/" <> _ = path), do: path
 
   def validate_path(path) when is_binary(path) do
@@ -75,7 +76,7 @@ defmodule Helios.Router.Scope do
   @doc """
   Defines the given pipeline.
   """
-  @spec pipeline(module :: module(), pipe :: module() | atom()) :: :ok
+  @spec pipeline(module :: module(), pipe :: module() | atom() | list(atom())) :: :ok
   def pipeline(module, pipe) when is_atom(pipe) do
     update_pipes(module, &MapSet.put(&1, pipe))
   end
@@ -83,7 +84,6 @@ defmodule Helios.Router.Scope do
   @doc """
   Appends the given pipes to the current scope pipe through.
   """
-  @spec pipeline(module :: module(), pipe :: atom() | list(atom())) :: :ok
   def pipe_through(module, new_pipes) do
     new_pipes = List.wrap(new_pipes)
 
@@ -152,7 +152,13 @@ defmodule Helios.Router.Scope do
   Returns true if the module's definition is currently within a scope block.
   """
   @spec inside_scope?(module) :: boolean() | no_return()
-  def inside_scope?(module), do: length(get_stack(module)) > 1
+  def inside_scope?(module) do
+    module
+    |> get_stack()
+    |> List.wrap()
+    |> length()
+    |> Kernel.>(1)
+  end
 
   @doc """
   Add a forward to the router.
@@ -225,7 +231,7 @@ defmodule Helios.Router.Scope do
     Enum.reduce(stack, assigns, &Map.merge(&1.assigns, &2))
   end
 
-  @spec join_pipe_through(Stact.t()) :: list()
+  @spec join_pipe_through(Stack.t()) :: list()
   defp join_pipe_through(stack) do
     for scope <- Enum.reverse(stack),
         item <- scope.pipes,

@@ -1314,9 +1314,9 @@ defmodule Helios.Registry.Tracker do
     handle_call({:track, name, meta}, from, state)
   end
 
-  defp handle_retry(_from, _event, _state) do
-    :keep_state_and_data
-  end
+  # defp handle_retry(_from, _event, _state) do
+  #   :keep_state_and_data
+  # end
 
   # Called when a pid dies, and the monitor is triggered
   defp handle_monitor(ref, pid, :noconnection, %TrackerState{endpoint: endpoint} = state) do
@@ -1637,21 +1637,24 @@ defmodule Helios.Registry.Tracker do
     end
   end
 
-  @global_blacklist MapSet.new([~r/^remsh.*$/, ~r/^.+_upgrader_.+$/, ~r/^.+_maint_.+$/])
+
   # The list of configured ignore patterns for nodes
   # This is only applied if no blacklist is provided.
   defp node_blacklist(config) do
     config
+    |> List.wrap()
     |> Keyword.get(:node_blacklist, [])
     |> MapSet.new()
-    |> MapSet.union(@global_blacklist)
+    |> MapSet.union(MapSet.new([~r/^remsh.*$/, ~r/^.+_upgrader_.+$/, ~r/^.+_maint_.+$/]))
     |> MapSet.to_list()
   end
 
   # The list of configured whitelist patterns for nodes
   # If a whitelist is provided, any nodes which do not match the whitelist are ignored
   defp node_whitelist(config) do
-    Keyword.get(config, :node_whitelist, [])
+    config
+    |> List.wrap()
+    |> Keyword.get(:node_whitelist, [])
   end
 
   # Determine if a node should be ignored, even if connected

@@ -4,6 +4,11 @@ defmodule Helios.Pipeline.Plug do
   """
   alias Helios.Context
 
+  @typedoc """
+  Module that implements #{__MODULE__} behaviour
+  """
+  @type t :: module() | atom()
+
   @type opts :: Keyword.t()
 
   @callback init(opts) :: opts

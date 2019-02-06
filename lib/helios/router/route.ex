@@ -6,7 +6,7 @@ defmodule Helios.Router.Route do
   @type line :: non_neg_integer()
   @type kind :: :match | :forward
   @type path :: String.t()
-  @type plug :: atom()
+  @type plug :: module() | atom()
   @type opts :: list()
   @type proxy :: {atom(), atom()} | atom() | nil
   @type private :: map()
@@ -58,7 +58,7 @@ defmodule Helios.Router.Route do
   Receives the verb, path, plug, options and proxy helper
   and returns a `Helios.Router.Route` struct.
   """
-  @spec build(line, kind, verb, path | nil, plug, opts, proxy, pipe_through | nil, %{}, %{}) :: t
+  @spec build(line, kind, verb, path | nil, plug, opts, proxy, pipe_through | nil, map, map) :: t
   def build(line, kind, verb, path, plug, opts, proxy, pipe_through, private, assigns)
       when is_atom(verb) and is_atom(plug) and (is_nil(proxy) or is_binary(proxy)) and
              is_list(pipe_through) and is_map(private) and is_map(assigns) and

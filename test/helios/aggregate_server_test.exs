@@ -30,7 +30,7 @@ defmodule Helios.AggregateServerTest do
   test "should persist UserCreated in event journal", args do
     # Task.start(fn -> :sys.trace(pid, true) end)
 
-    params = %{id: args.id, first_name: "Jhon", last_name: "Doe", email: "jhon.doe@gmail.com"}
+    params = %{"id" => 1, "first_name" => "Jhon", "last_name" => "Doe", "email" => "jhon.doe@gmail.com"}
     path = "/users/#{args.id}/create_user"
 
     ctx =

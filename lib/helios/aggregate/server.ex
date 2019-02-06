@@ -9,6 +9,7 @@ defmodule Helios.Aggregate.Server do
 
   @idle_timeout 30_000
 
+  @type key :: integer() | String.t()
   @type status :: :recovering | {:executing, Context.t()} | :ready
   @type server_state :: %__MODULE__{
           id: term,
@@ -34,7 +35,11 @@ defmodule Helios.Aggregate.Server do
   # CLIENT
 
   def call(%{private: private} = ctx, _) do
-    %{helios_plug_key: key, helios_plug: plug, helios_endpoint: endpoint} = private
+    %{
+      helios_plug_key: key,
+      helios_plug: plug,
+      helios_endpoint: endpoint
+    } = private
     id = Map.get(ctx.params, key)
 
     {:ok, pid} =
@@ -49,11 +54,7 @@ defmodule Helios.Aggregate.Server do
     GenServer.call(pid, {:execute, ctx}, Map.get(private, :helios_timeout, 5_000))
   end
 
-  @spec start_link(
-          otp_app :: atom,
-          aggregate :: {module(), integer() | String.t()},
-          opts :: GenServer.options()
-        ) :: GenServer.on_start()
+  @spec start_link(atom, {module(), key()}, GenServer.options()) :: GenServer.on_start()
   def start_link(otp_app, {module, id}, opts \\ []) do
     GenServer.start_link(__MODULE__, [otp_app, module, id], opts)
   end
@@ -178,10 +179,7 @@ defmodule Helios.Aggregate.Server do
   end
 
   @impl GenServer
-  def handle_info(
-        :idlechk,
-        %{buffer: buffer, last_activity_at: inactive_since} = state
-      ) do
+  def handle_info(:idlechk, %{buffer: buffer, last_activity_at: inactive_since} = state) do
     with {:buffer, 0} <- {:buffer, :queue.len(buffer)},
          {:message_queue_len, 0} <- Process.info(self(), :message_queue_len),
          true <- DateTime.diff(DateTime.utc_now(), inactive_since, :millisecond) > @idle_timeout do

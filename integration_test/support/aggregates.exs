@@ -14,7 +14,7 @@ defmodule Helios.Integration.UserAggregate do
     "users-#{id}"
   end
 
-  def create_user(ctx, %{id: id, first_name: first_name, last_name: last_name, email: email}) do
+  def create_user(ctx, %{"id" => id, "first_name" => first_name, "last_name" => last_name, "email" => email}) do
     aggregate = state(ctx)
     if aggregate.id == id do
       raise RuntimeError, "Already Created"

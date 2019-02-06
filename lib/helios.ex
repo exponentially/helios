@@ -4,7 +4,11 @@ defmodule Helios do
 
   ## Dependencies
 
-    * [Helios Aggregate](https://hexdocs.pm/helios_aggregate) - Aggregate pipeline and behaviour
+    * [elixir_uuid](https://hexdocs.pm/elixir_uuid)
+    * [libring](https://hexdocs.pm/libring)
+    * [gen_state_machine](https://hex.pm/packages/gen_state_machine)
+    * [poolboy](https://hex.pm/packages/poolboy)
+    * [extreme](https://hexdocs.pm/extreme) - OPTIONAL, requred if you use Eventstore as event journal database
   """
 
   use Application
@@ -19,7 +23,6 @@ defmodule Helios do
 
 
     children = [
-      # todo: implement code reloader
       {Task.Supervisor, name: Helios.Registry.TaskSupervisor},
       {Helios.CodeReloader.Server, []}
     ]

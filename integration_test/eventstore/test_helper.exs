@@ -1,6 +1,6 @@
 Logger.configure(level: :info)
 ExUnit.start()
-
+IO.inspect("JOURNAL ADAPTER STARTED TEST")
 alias Helios.EventJournal.Adapter.Eventstore
 alias Helios.Integration.TestJournal
 

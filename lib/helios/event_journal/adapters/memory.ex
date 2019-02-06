@@ -486,6 +486,7 @@ defmodule Helios.EventJournal.Adapter.Memory do
     Module.concat(module, @streams)
   end
 
+  @spec events(atom) :: atom
   defp events(module) do
     Module.concat(module, @events)
   end
