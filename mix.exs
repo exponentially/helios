@@ -21,7 +21,8 @@ defmodule Helios.MixProject do
       description: "A building blocks for CQRS segregated applications",
       package: package(),
       name: "Helios",
-      docs: docs()
+      docs: docs(),
+      dialyzer: [plt_add_apps: [:mix], ignore_warnings: ".dialyzer_ignore.exs"]
     ]
   end
 
@@ -40,8 +41,8 @@ defmodule Helios.MixProject do
       {:elixir_uuid, "~> 1.2"},
       {:libring, "~> 1.0"},
       {:gen_state_machine, "~> 2.0"},
-      {:extreme, "~> 0.13", only: [:test, :eventstore], optinal: true},
-      {:dialyxir, "~> 1.0.0-rc.3", only: [:dev, :test], runtime: false, optinal: true},
+      {:extreme, "~> 0.13", optinal: true},
+      {:dialyxir, "~> 1.0.0-rc.4", only: [:dev, :test], runtime: false, optinal: true},
       {:credo, "~> 0.10.0", only: [:dev, :test], runtime: false},
       {:poolboy, "~> 1.5"}
     ]
@@ -53,16 +54,16 @@ defmodule Helios.MixProject do
   defp test_paths(_), do: ["test/helios"]
 
   defp test_adapters(args) do
-    for env <- @journal_adapters, do: env_run(env, args)
+    for env <- @journal_adapters, do: test_run(env, args)
   end
 
-  defp env_run(env, args) do
+  defp test_run(adapter, args) do
     args = if IO.ANSI.enabled?, do: ["--color"|args], else: ["--no-color"|args]
 
-    IO.puts "==> Running tests for JOURNAL_ADAPTER=#{env} mix test"
+    IO.puts "==> Running tests for adapter #{adapter} mix test"
     {_, res} = System.cmd "mix", ["test" | args],
                           into: IO.binstream(:stdio, :line),
-                          env: [{"MIX_ENV", "test"}, {"JOURNAL_ADAPTER", env}]
+                          env: [{"MIX_ENV", "test"}, {"JOURNAL_ADAPTER", adapter}]
 
     if res > 0 do
       System.at_exit(fn _ -> exit({:shutdown, 1}) end)

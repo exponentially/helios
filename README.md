@@ -65,7 +65,4 @@ your project `{:extreme, "~> 0.13"}`
 * [Your First Aggregate Behaviour](guides/Your%20First%20Aggregate.md)
 * [Routing](guides/Routing.md)
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/helios](https://hexdocs.pm/helios).
 

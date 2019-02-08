@@ -37,6 +37,6 @@ defmodule Mix.Tasks.Helios.Server do
   end
 
   defp iex_running? do
-    Code.ensure_loaded?(IEx) and IEx.started?
+    Code.ensure_loaded?(IEx) and apply(IEx, :started?, [])
   end
 end

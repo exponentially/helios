@@ -43,7 +43,7 @@ defmodule Helios.EventJournal.Adapter do
               max_events :: integer,
               resolve_links :: boolean
             ) ::
-              {:ok, list(Messages.ReadStreamEventsResponse.t())}
+              {:ok, Messages.ReadStreamEventsResponse.t()}
               | {:error, Messages.ReadStreamEventsResponse.read_error()}
 
   @doc "Reads `max_events` events from journal from given position backward until max_events or begining of stream is reached"
@@ -54,7 +54,7 @@ defmodule Helios.EventJournal.Adapter do
               max_events :: integer,
               resolve_links :: boolean
             ) ::
-              {:ok, list(Messages.ReadStreamEventsResponse.t())}
+              {:ok, Messages.ReadStreamEventsResponse.t()}
               | {:error, Messages.ReadStreamEventsResponse.read_error()}
 
   @callback read_all_events_forward(
@@ -63,7 +63,7 @@ defmodule Helios.EventJournal.Adapter do
               max_events :: integer,
               resolve_links :: boolean
             ) ::
-              {:ok, list(Messages.ReadAllEventsResponse.t())}
+              {:ok, Messages.ReadAllEventsResponse.t()}
               | {:error, Messages.ReadAllEventsResponse.read_error()}
 
   @callback read_all_events_backward(
@@ -72,7 +72,7 @@ defmodule Helios.EventJournal.Adapter do
               max_events :: integer,
               resolve_links :: boolean
             ) ::
-              {:ok, list(Messages.ReadAllEventsResponse.t())}
+              {:ok, Messages.ReadAllEventsResponse.t()}
               | {:error, Messages.ReadAllEventsResponse.read_error()}
 
   @callback delete_stream(
@@ -94,5 +94,5 @@ defmodule Helios.EventJournal.Adapter do
               | {:error, append_error}
 
   @callback get_stream_metadata(server :: module, stream :: stream_name()) ::
-              {:ok, event_number} | {:error, append_error}
+              {:ok, Messages.StreamMetadataResponse.t()} | {:error, append_error}
 end

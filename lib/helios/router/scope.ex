@@ -33,14 +33,14 @@ defmodule Helios.Router.Scope do
   in case of `aggregate` sufix "Aggregate".
   """
   @spec route(
-          Macro.Env.line(),
-          Macro.Env.module(),
+          non_neg_integer(),
+          module(),
           Route.kind(),
           Route.verb(),
           Route.path(),
           Route.plug(),
           Route.opts(),
-          keyword()
+          Keyword.t()
         ) :: Route.t() | no_return
   def route(line, module, kind, verb, path, plug, plug_opts, opts) do
     path = validate_path(path)
@@ -187,8 +187,6 @@ defmodule Helios.Router.Scope do
     end
   end
 
-  @spec join(module(), String.t(), atom() | nil, String.t() | nil, map() | nil, map() | nil) ::
-          {String.t(), atom(), String.t(), list(atom()), map() | nil, map() | nil}
   defp join(module, path, alias, as, private, assigns) do
     stack = get_stack(module)
 
@@ -196,7 +194,6 @@ defmodule Helios.Router.Scope do
      join_pipe_through(stack), join_private(stack, private), join_assigns(stack, assigns)}
   end
 
-  @spec join_path(Stack.t(), String.t()) :: String.t()
   defp join_path(stack, path) do
     "/" <>
       ([String.split(path, "/", trim: true) | extract(stack, :path)]
@@ -205,14 +202,12 @@ defmodule Helios.Router.Scope do
        |> Enum.join("/"))
   end
 
-  @spec join_alias(Stack.t(), atom()) :: atom()
   defp join_alias(stack, alias) when is_atom(alias) do
     [alias | extract(stack, :alias)]
     |> Enum.reverse()
     |> Module.concat()
   end
 
-  @spec join_as(Stack.t(), nil | atom() | String.t()) :: nil | String.t()
   defp join_as(_stack, nil), do: nil
 
   defp join_as(stack, as) when is_atom(as) or is_binary(as) do
@@ -221,49 +216,40 @@ defmodule Helios.Router.Scope do
     |> Enum.join("_")
   end
 
-  @spec join_private(Stack.t(), map()) :: map()
   defp join_private(stack, private) do
     Enum.reduce(stack, private, &Map.merge(&1.private, &2))
   end
 
-  @spec join_assigns(Stack.t(), map()) :: map()
   defp join_assigns(stack, assigns) do
     Enum.reduce(stack, assigns, &Map.merge(&1.assigns, &2))
   end
 
-  @spec join_pipe_through(Stack.t()) :: list()
   defp join_pipe_through(stack) do
     for scope <- Enum.reverse(stack),
         item <- scope.pipes,
         do: item
   end
 
-  @spec extract(Stack.t(), atom()) :: any
   defp extract(stack, attr) do
     for scope <- stack, item = Map.fetch!(scope, attr), do: item
   end
 
-  @spec get_stack(module) :: Stack.t()
   defp get_stack(module) do
     get_attribute(module, @stack)
   end
 
-  @spec update_stack(module, fun) :: :ok
   defp update_stack(module, fun) do
     update_attribute(module, @stack, fun)
   end
 
-  @spec update_pipes(module, fun) :: :ok
   defp update_pipes(module, fun) do
     update_attribute(module, @pipes, fun)
   end
 
-  @spec get_attribute(module(), atom()) :: Scope.t() | no_return
   defp get_attribute(module, attr) do
     Module.get_attribute(module, attr) || raise "Helios router scope was not initialized"
   end
 
-  @spec update_attribute(module(), atom(), fun()) :: :ok
   defp update_attribute(module, attr, fun) do
     Module.put_attribute(module, attr, fun.(get_attribute(module, attr)))
   end

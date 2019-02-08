@@ -9,9 +9,9 @@ defmodule Helios.AggregateServerTest do
 
   use Helios.Pipeline.Test
 
-  defmodule Endpoint do
-    use Helios.Endpoint, otp_app: :helios
-  end
+  # defmodule Endpoint do
+  #   use Helios.Endpoint, otp_app: :helios
+  # end
 
   setup do
     id = UUID.uuid4()
@@ -26,6 +26,7 @@ defmodule Helios.AggregateServerTest do
     ]
   end
 
+  @tag :capture_log
   @tag :aggregate_server
   test "should persist UserCreated in event journal", args do
     # Task.start(fn -> :sys.trace(pid, true) end)

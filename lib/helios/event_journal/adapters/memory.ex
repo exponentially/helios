@@ -327,15 +327,15 @@ defmodule Helios.EventJournal.Adapter.Memory do
   @impl Helios.EventJournal.Adapter
   def get_stream_metadata(server, stream) do
     case :ets.lookup(streams(server), stream) do
-      [{stream, sequence_no, meta} | _] ->
-        resp = %StreamMetadataResponse{
-          stream: stream,
-          is_deleted: sequence_no == @max_event_no,
-          meta_version: 0,
-          metadata: meta
-        }
-
-        {:ok, resp}
+      [{^stream, sequence_no, meta} | _] ->
+        {:ok, sequence_no}
+        {:ok,
+           StreamMetadataResponse.new(
+             stream,
+             false,
+             sequence_no,
+             meta || %{}
+           )}
 
       [] ->
         {:error, :no_stream}
@@ -486,7 +486,7 @@ defmodule Helios.EventJournal.Adapter.Memory do
     Module.concat(module, @streams)
   end
 
-  @spec events(atom) :: atom
+  @spec events(module) :: module
   defp events(module) do
     Module.concat(module, @events)
   end

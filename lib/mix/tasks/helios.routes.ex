@@ -1,5 +1,6 @@
 defmodule Mix.Tasks.Helios.Routes do
   @moduledoc false
+  @shortdoc "Prints all defined routes"
   use Mix.Task
   alias Helios.Router.ConsoleFormatter
 

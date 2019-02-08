@@ -1,11 +1,7 @@
 defmodule Helios.AggregateTest do
   use ExUnit.Case, async: true
-  import Helios.Integration.Assertions
   alias Helios.Integration.UserAggregate
-  alias Helios.Integration.Events.UserCreated
-  alias Helios.Integration.Events.UserEmailChanged
   alias Helios.Context
-  alias Helios.EventJournal.Messages.EventData
 
   doctest Helios.Aggregate
 
@@ -21,6 +17,7 @@ defmodule Helios.AggregateTest do
   end
 
   test "should execute logger in aggregate pipeline", args do
+    request_id = UUID.uuid4()
     params = %{
       "id" => 1,
       "first_name" => "Jhon",
@@ -30,7 +27,7 @@ defmodule Helios.AggregateTest do
 
     ctx_before =
       args.ctx
-      |> Map.put(:request_id, UUID.uuid4())
+      |> Map.put(:request_id, request_id)
       |> Map.put(:params, params)
       |> Context.assign(:aggregate, UserAggregate.new())
       |> Context.put_private(:helios_plug_key, "id")
@@ -40,27 +37,25 @@ defmodule Helios.AggregateTest do
 
     ctx_after = UserAggregate.handle(ctx_before, params)
 
-    expected = [
-      %EventData{
-        data: %UserCreated{
-          first_name: "Jhon",
-          last_name: "Doe",
-          user_id: 1
-        },
-        type: "Elixir.Helios.Integration.Events.UserCreated"
-      },
-      %EventData{
-        data: %UserEmailChanged{
-          new_email: "jhon.doe@gmail.com",
-          old_email: nil,
-          user_id: 1
-        },
-        type: "Elixir.Helios.Integration.Events.UserEmailChanged"
-      }
-    ]
+    assert not ctx_after.halted
 
-    assert_emitted(ctx_after, expected)
-    assert_halted(ctx_after, false)
-    assert_response(ctx_after, :created)
+
+    assert 2 == Enum.count(ctx_after.events)
+    assert [e1, e2] = ctx_after.events
+
+    assert e1.data.first_name == "Jhon"
+    assert e1.data.last_name == "Doe"
+    assert e1.data.user_id == 1
+    assert e1.type == "Elixir.Helios.Integration.Events.UserCreated"
+    assert e1.metadata.causation_id == request_id
+
+    assert e2.data.new_email == "jhon.doe@gmail.com"
+    assert e2.data.old_email == nil
+    assert e2.data.user_id == 1
+    assert e2.type == "Elixir.Helios.Integration.Events.UserEmailChanged"
+    assert e2.metadata.causation_id == request_id
+
+    assert :set == ctx_after.state
+    assert ctx_after.response == :created
   end
 end

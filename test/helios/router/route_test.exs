@@ -52,5 +52,6 @@ defmodule Helios.Router.RouteTest do
     assert exprs.verb_match == :execute
     assert exprs.path == ["users", {:id, [], nil}, "create_user"]
     assert exprs.binding == [{"id", {:id, [], nil}}]
+    assert exprs.dispatch == {UserAggregate, :create_user}
   end
 end
