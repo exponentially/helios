@@ -236,6 +236,7 @@ defmodule Helios.Router do
       end
 
       unquote(matches)
+
       unquote(match_404)
     end
   end
