@@ -22,7 +22,10 @@ defmodule Helios.MixProject do
       package: package(),
       name: "Helios",
       docs: docs(),
-      dialyzer: [plt_add_apps: [:mix], ignore_warnings: ".dialyzer_ignore.exs"]
+      dialyzer: [ plt_add_apps: [:mix] ,
+                  ignore_warnings: ".dialyzer_ignore.exs",
+                  list_unused_filters: true
+                ]
     ]
   end
 
