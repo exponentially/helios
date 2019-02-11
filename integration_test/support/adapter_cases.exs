@@ -7,7 +7,7 @@ defmodule Helios.Integration.AdapterCasesTest do
   @tag :event_journal
   @tag :event_journal_write
   test "should write to stream in journal and return correct event version" do
-    stream = "extreme_test-#{UUID.uuid4()}"
+    stream = "journal_test_write_stream"
 
     event =
       Messages.EventData.new(Extreme.Tools.gen_uuid(), UserCreated, %{
@@ -23,7 +23,7 @@ defmodule Helios.Integration.AdapterCasesTest do
   @tag :event_journal
   @tag :event_journal_read_single
   test "should read single event at given position" do
-    stream = "extreme_test-#{UUID.uuid4()}"
+    stream = "journal_test_read_single_event"
 
     events =
       Enum.map(
@@ -53,7 +53,7 @@ defmodule Helios.Integration.AdapterCasesTest do
   @tag :event_journal
   @tag :event_journal_read
   test "should read events from given stream, from given position, forward" do
-    stream = "extreme_test-#{UUID.uuid4()}"
+    stream = "journal_test_read_forward_stream"
     number_of_events = 20
 
     events =
@@ -83,7 +83,7 @@ defmodule Helios.Integration.AdapterCasesTest do
   @tag :event_journal
   @tag :event_journal_read
   test "should read events from given stream, from given position, backward" do
-    stream = "extreme_test-#{UUID.uuid4()}"
+    stream = "journal_test_read_stream_backward"
     number_of_events = 20
 
     events =
@@ -112,7 +112,7 @@ defmodule Helios.Integration.AdapterCasesTest do
   @tag :event_journal
   @tag :event_journal_read_all
   test "should read all events from event store forward" do
-    stream = "extreme_test-#{UUID.uuid4()}"
+    stream = "journal_test-#{UUID.uuid4()}"
     number_of_events = 500
 
     events =
@@ -142,7 +142,7 @@ defmodule Helios.Integration.AdapterCasesTest do
   @tag :event_journal
   @tag :event_journal_delete_stream
   test "should soft delete stream from event journal" do
-    stream = "extreme_test-#{UUID.uuid4()}"
+    stream = "journal_test-#{UUID.uuid4()}"
     number_of_events = 20
 
     events =
@@ -181,7 +181,7 @@ defmodule Helios.Integration.AdapterCasesTest do
   @tag :event_journal
   @tag :event_journal_delete_stream
   test "should hard delete stream from event journal" do
-    stream = "extreme_test-#{UUID.uuid4()}"
+    stream = "journal_test-#{UUID.uuid4()}"
     number_of_events = 20
 
     events =
@@ -218,7 +218,7 @@ defmodule Helios.Integration.AdapterCasesTest do
   @tag :event_journal
   @tag :event_journal_stream_metadata
   test "should write and read stream metadata to and from event journal" do
-    stream = "extreme_test-#{UUID.uuid4()}"
+    stream = "journal_test_write_metadata"
     number_of_events = 20
 
     metadata = %{
@@ -249,7 +249,7 @@ defmodule Helios.Integration.AdapterCasesTest do
 
     assert {:ok, %{metadata: _metadata, meta_version: 0}} = Journal.get_stream_metadata(stream)
 
-    # assert {:ok, 1} == Journal.set_stream_metadata(stream, %{}, 0) # this need scavage to be run in eventstore before executing below lines
+    # assert {:ok, 1} == Journal.set_stream_metadata(stream, %{}, 0) # this requires scavage to be run in eventstore before executing below lines
 
     assert {:ok, 2 * number_of_events + 1} ==
              Journal.append_to_stream(stream, events, number_of_events)
