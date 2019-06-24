@@ -7,17 +7,24 @@ defmodule Helios.Aggregate do
 
   alias Helios.Context
 
+  @typedoc """
+  The unique aggregate id.
+  """
   @type aggregate_id :: String.t()
 
   @type t :: struct()
 
   @doc """
   Returns unique identifier for stream to which events will be persisted.
+
+  This persistance id will be used while persisting events emitted by aggregate into
+  its own stream of the events.
   """
   @callback persistance_id(id :: term) :: String.t()
 
   @doc """
-  Handles execution of the command.
+  Handles execution of the command once command is handed from router to
+  `Helios.Aggregate.Server`.
   """
   @callback handle(ctx :: Context.t(), params :: Context.params()) :: Context.t()
 

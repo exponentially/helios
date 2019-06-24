@@ -40,6 +40,7 @@ defmodule Helios.Aggregate.Server do
       helios_plug: plug,
       helios_endpoint: endpoint
     } = private
+
     id = Map.get(ctx.params, key)
 
     {:ok, pid} =
@@ -76,7 +77,7 @@ defmodule Helios.Aggregate.Server do
         __MODULE__,
         id: id,
         aggregate_module: module,
-        aggregate: struct(module),
+        aggregate: apply(module, :new, []),
         journal: journal,
         status: :recovering,
         last_activity_at: DateTime.utc_now()
@@ -295,11 +296,12 @@ defmodule Helios.Aggregate.Server do
 
   defp maybe_commit(s), do: s
 
-  defp maybe_reply(%{status: {:executing, %{status: :failed, response: response} = ctx}} = s) do
+  defp maybe_reply(%{status: {:executing, %{status: :failed} = ctx}} = s) do
     case ctx.owner do
       nil ->
         Logger.warn(
-          "Failed to execute command #{ctx.private.helios_plug_handler} with reson #{response} but no owner found in context to report to!!!"
+          "Failed to execute command #{ctx.private.helios_plug_handler} with " <>
+            "reson #{ctx.response} but no owner found in context to report to!!!"
         )
 
       pid when is_pid(pid) ->
@@ -312,11 +314,12 @@ defmodule Helios.Aggregate.Server do
     %{s | status: :ready}
   end
 
-  defp maybe_reply(%{status: {:executing, %{status: :success, response: response} = ctx}} = s) do
+  defp maybe_reply(%{status: {:executing, %{status: :success} = ctx}} = s) do
     case ctx.owner do
       nil ->
         Logger.warn(
-          "Failed to execute command #{ctx.private.helios_plug_handler} with reson #{response} but no owner found in context to report to!!!"
+          "Failed to execute command #{ctx.private.helios_plug_handler} with " <>
+            " reson #{ctx.response} but no owner found in context to report to!!!"
         )
 
       pid when is_pid(pid) ->
@@ -384,7 +387,7 @@ defmodule Helios.Aggregate.Server do
               {:halt, args}
 
             {:error, error} ->
-              raise RuntimeError, "Failed to recover aggregate due #{inspect(error)}"
+              raise RuntimeError, "Failed to recover aggregate due `#{inspect(error)}`"
           end
         end,
         fn x -> x end

@@ -11,6 +11,7 @@ defmodule Helios.Aggregate.Supervisor do
     }
   end
 
+  @spec supervisor_name(atom) :: atom
   def supervisor_name(endpoint) when is_atom(endpoint) do
     Module.concat(endpoint, AggregateSupervisor)
   end

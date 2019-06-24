@@ -25,7 +25,6 @@ defmodule Helios.RoutingTest do
   use ExUnit.Case, async: true
   alias Helios.RoutingTest.MyRouter
 
-
   test "should" do
     params = %{
       "id" => 1,

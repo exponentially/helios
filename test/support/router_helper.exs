@@ -19,8 +19,11 @@ defmodule RouterHelper do
     |> router.call(router.init([]))
   end
 
-  def action(plug, verb, action, params \\ nil) do
-    ctx = ctx(verb, "/", params)
-    plug.call(ctx, plug.init(action))
+  def execute(plug, handler, params \\ nil) do
+    :execute
+    |> ctx("/", params)
+    |> Helios.Context.put_private(:helios_plug, plug)
+    |> Helios.Context.put_private(:helios_plug_handler, handler)
+    |> plug.call(plug.init(handler))
   end
 end
