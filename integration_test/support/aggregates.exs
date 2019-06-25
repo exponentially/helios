@@ -10,6 +10,10 @@ defmodule Helios.Integration.UserAggregate do
   # Plugs for command context pipeline
   plug(Helios.Plugs.Logger, log_level: :debug)
 
+  def init(args) do
+    {:ok, struct!(__MODULE__, [])}
+  end
+
   def persistance_id(id) do
     "users-#{id}"
   end

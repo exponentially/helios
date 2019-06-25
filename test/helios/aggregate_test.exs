@@ -25,11 +25,13 @@ defmodule Helios.AggregateTest do
       "email" => "jhon.doe@gmail.com"
     }
 
+    {:ok, aggregate} = UserAggregate.init([id: 1234, otp_app: :dummy_app])
+
     ctx_before =
       args.ctx
       |> Map.put(:request_id, request_id)
       |> Map.put(:params, params)
-      |> Context.assign(:aggregate, UserAggregate.new())
+      |> Context.assign(:aggregate, aggregate)
       |> Context.put_private(:helios_plug_key, "id")
       |> Context.put_private(:helios_plug_handler, :create_user)
 

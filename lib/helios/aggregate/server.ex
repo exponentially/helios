@@ -77,16 +77,32 @@ defmodule Helios.Aggregate.Server do
         __MODULE__,
         id: id,
         aggregate_module: module,
-        aggregate: apply(module, :new, []),
         journal: journal,
         status: :recovering,
         last_activity_at: DateTime.utc_now()
       )
 
-    :ok = GenServer.cast(self(), :recover)
-    {:ok, state}
+    case module.init(id: id, otp_app: otp_app) do
+      {:ok, aggregate} ->
+        :ok = GenServer.cast(self(), :recover)
+        {:ok, %{state | aggregate: aggregate}}
+
+      {:ok, aggregate, and_then} ->
+        :ok = GenServer.cast(self(), :recover)
+        {:ok, %{state | aggregate: aggregate}, and_then}
+
+      {:stop, _} = stop ->
+        stop
+
+      :ignore ->
+        :ignore
+
+      other ->
+        {:stop, {:bad_return_value, other}}
+    end
   end
 
+  @doc false
   @impl true
   def handle_call({:execute, ctx}, from, %{status: :ready} = state) do
     new_ctx = %{ctx | owner: from}
@@ -111,6 +127,26 @@ defmodule Helios.Aggregate.Server do
     {:stop, :shutdown, {:resume, s}, s}
   end
 
+  def handle_call(msg, from, %{mod: mod, state: state} = s) do
+    case mod.handle_call(msg, from, state) do
+      {:reply, reply, state} ->
+        {:reply, reply, %{s | state: state}}
+
+      {:reply, reply, state, t} when is_integer(t) or t == :hibernate ->
+        {:reply, reply, %{s | state: state}, t}
+
+      {:reply, reply, state, {:continue, t}} ->
+        {:reply, reply, %{s | state: state}, {:continue, t}}
+
+      {:stop, reason, reply, state} ->
+        {:stop, reason, reply, %{s | state: state}}
+
+      return ->
+        handle_noreply_callback(return, s)
+    end
+  end
+
+  @doc false
   @impl true
   def handle_cast({:execute, ctx}, %{status: :ready} = state) do
     handle_execute(ctx, state)
@@ -179,6 +215,11 @@ defmodule Helios.Aggregate.Server do
     {:noreply, state}
   end
 
+  def handle_cast(msg, %{state: state} = s) do
+    noreply_callback(:handle_cast, [msg, state], s)
+  end
+
+  @doc false
   @impl GenServer
   def handle_info(:idlechk, %{buffer: buffer, last_activity_at: inactive_since} = state) do
     with {:buffer, 0} <- {:buffer, :queue.len(buffer)},
@@ -209,13 +250,72 @@ defmodule Helios.Aggregate.Server do
     {:stop, :shutdown, state}
   end
 
-  def handle_info(msg, state) do
-    Logger.warn(
-      fn -> "Received unexpected handle_info message #{inspect(msg)}." end,
-      module: inspect(__MODULE__)
-    )
+  def handle_info(msg, %{aggregate: aggregate} = state) do
+    noreply_callback(:handle_info, [msg, aggregate], state)
+  end
 
-    {:noreply, state}
+  ## Catch-all messages
+  @doc false
+  @impl true
+  def terminate(reason, %{aggregate_module: mod, aggregate: aggregate}) do
+    if function_exported?(mod, :terminate, 2) do
+      mod.terminate(reason, aggregate)
+    else
+      :ok
+    end
+  end
+
+  @doc false
+  @impl true
+  def code_change(old_vsn, %{aggregate_aggregate: mod, aggregate: aggregate} = s, extra) do
+    if function_exported?(mod, :code_change, 3) do
+      case mod.code_change(old_vsn, aggregate, extra) do
+        {:ok, aggregate} -> {:ok, %{s | aggregate: aggregate}}
+        other -> other
+      end
+    else
+      {:ok, s}
+    end
+  end
+
+  @doc false
+  @impl true
+  def format_status(opt, [pdict, %{aggregate_module: mod, aggregate: aggregate} = s]) do
+    case {function_exported?(mod, :format_status, 2), opt} do
+      {true, :normal} ->
+        data = [{~c(Aggregate), aggregate}] ++ format_status_for_subscription(s)
+        format_status(mod, opt, pdict, aggregate, data: data)
+
+      {true, :terminate} ->
+        format_status(mod, opt, pdict, aggregate, aggregate)
+
+      {false, :normal} ->
+        [data: [{~c(Aggregate), aggregate}] ++ format_status_for_subscription(s)]
+
+      {false, :terminate} ->
+        aggregate
+    end
+  end
+
+  defp format_status(mod, opt, pdict, state, default) do
+    try do
+      mod.format_status(opt, [pdict, state])
+    catch
+      _, _ ->
+        default
+    end
+  end
+
+  defp format_status_for_subscription(%{
+         conn: conn,
+         module: module,
+         sub: subscription
+       }) do
+    [
+      {~c(Connection), conn},
+      {~c(Subscription), subscription},
+      {~c(Implementation), module}
+    ]
   end
 
   # SERVER PRIVATE
@@ -262,14 +362,15 @@ defmodule Helios.Aggregate.Server do
 
   defp maybe_commit(%{status: {:executing, %{status: :executed, events: events} = ctx}} = s)
        when length(events) > 0 do
-    stream = s.aggregate_module.persistance_id(s.id)
+    %{aggregate_module: module, journal: journal} = s
+    stream = module.persistance_id(s.id)
 
     # todo: async commiting
-    case apply(s.journal, :append_to_stream, [stream, events, s.last_sequence_no]) do
+    case journal.append_to_stream(stream, events, s.last_sequence_no) do
       {:ok, event_number} ->
         aggregate =
           Enum.reduce(events, s.aggregate, fn event, agg ->
-            apply(s.aggregate_module, :apply_event, [event.data, agg])
+            module.apply_event(event.data, agg)
           end)
 
         new_ctx =
@@ -409,5 +510,38 @@ defmodule Helios.Aggregate.Server do
 
   defp ready(state) do
     %{state | status: :ready}
+  end
+
+  defp noreply_callback(:handle_info, [msg, aggregate], %{aggregate_module: mod} = s) do
+    if function_exported?(mod, :handle_info, 2) do
+      handle_noreply_callback(mod.handle_info(msg, aggregate), s)
+    else
+      log = '** Undefined handle_info in ~tp~n** Unhandled message: ~tp~n'
+      :error_logger.warning_msg(log, [mod, msg])
+      {:noreply, %{s | aggregate: aggregate}}
+    end
+  end
+
+  defp noreply_callback(callback, args, %{aggregate_module: mod} = s) do
+    handle_noreply_callback(apply(mod, callback, args), s)
+  end
+
+  defp handle_noreply_callback(return, s) do
+    case return do
+      {:noreply, aggregate} ->
+        {:noreply, %{s | aggregate: aggregate}}
+
+      {:noreply, aggregate, term} when is_integer(term) or term == :hibernate ->
+        {:noreply, %{s | aggregate: aggregate}, term}
+
+      {:noreply, aggregate, {:continue, term}} ->
+        {:noreply, %{s | aggregate: aggregate}, {:continue, term}}
+
+      {:stop, reason, aggregate} ->
+        {:stop, reason, %{s | aggregate: aggregate}}
+
+      other ->
+        {:stop, {:bad_return_value, other}, s}
+    end
   end
 end

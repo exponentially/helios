@@ -12,7 +12,11 @@ defmodule Helios.Aggregate do
   """
   @type aggregate_id :: String.t()
 
-  @type t :: struct()
+  @type aggregate :: struct()
+
+  @type from :: {pid(), tag :: term()}
+
+  @type init_args :: [otp_app: atom, id: aggregate_id]
 
   @doc """
   Returns unique identifier for stream to which events will be persisted.
@@ -29,6 +33,12 @@ defmodule Helios.Aggregate do
   @callback handle(ctx :: Context.t(), params :: Context.params()) :: Context.t()
 
   @doc """
+  Constructs new instance of aggregate struct. Override to set defaults or if your
+  struct is defined in different module.
+  """
+  @callback init(args :: init_args) :: aggregate
+
+  @doc """
   Applies single event to aggregate when replied or after `handle_exec/3` is executed.
 
   Must return `{:ok, state}` if event is aplied or raise an error if failed.
@@ -36,7 +46,90 @@ defmodule Helios.Aggregate do
   generated event and already validate it. Also, error has to bi risen in for some odd reason event cannot
   be applied to aggregate.
   """
-  @callback apply_event(event :: any, aggregate :: __MODULE__.t()) :: __MODULE__.t() | no_return
+  @callback apply_event(event :: any, aggregate) :: aggregate | no_return
+
+  @doc """
+  Optional cllback, when implemented it should treansform offered snapshot into
+  aggregate model.
+
+  Return `{:ok, aggregate}` if snapshot is applied to aggregate, or
+  `{:ignored, aggregate}` if you want ignore snapshot and apply all events from
+  beginning of the aggregate stream
+  """
+  @callback from_snapshot(snapshot_offer :: SnapshotOffer.t(), aggregate) ::
+              {:ok, aggregate}
+              | {:skip, aggregate}
+
+  @doc """
+  Optional callback, when implmented it should return snapshot of given aggregate.
+
+  When snapshot is stored it should record among aggregate state, sequence number
+  (or last_event_number) at which snapshot was taken.
+  """
+  @callback to_snapshot(aggregate) :: any
+
+  @doc """
+  `GenServer.handle_call/3`
+  """
+  @callback handle_call(request :: term(), from :: GenServer.from(), aggregate) ::
+              {:reply, reply, new_state}
+              | {:reply, reply, new_state, timeout() | :hibernate}
+              | {:noreply, new_state}
+              | {:noreply, new_state, timeout() | :hibernate}
+              | {:stop, reason, reply, new_state}
+              | {:stop, reason, new_state}
+            when reply: term(), new_state: aggregate, reason: term()
+
+  @doc """
+  `GenServer.handle_cast/2`
+  """
+  @callback handle_cast(request :: term(), aggregate) ::
+              {:noreply, new_state}
+              | {:noreply, new_state, timeout() | :hibernate}
+              | {:stop, reason :: term(), new_state}
+            when new_state: aggregate()
+
+  @doc """
+  `GenServer.handle_info/2`
+  """
+  @callback handle_info(msg :: :timeout | term(), aggregate) ::
+              {:noreply, new_state}
+              | {:noreply, new_state, timeout() | :hibernate}
+              | {:stop, reason :: term(), new_state}
+            when new_state: aggregate()
+
+  @doc """
+  The same as `c:GenServer.code_change/3`.
+  """
+  @callback code_change(old_vsn, state :: term, extra :: term) ::
+              {:ok, new_state :: term}
+              | {:error, reason :: term}
+            when old_vsn: term | {:down, term}
+
+  @doc """
+  The same as `c:GenServer.format_status/2`.
+  """
+  @callback format_status(:normal | :terminate, [pdict :: {term, term} | (state :: term), ...]) ::
+              status :: term
+
+  @doc """
+  The same as `c:GenServer.terminate/2`.
+  """
+  @callback terminate(reason, state :: term) :: term
+            when reason: :normal | :shutdown | {:shutdown, term} | term
+
+  @optional_callbacks [
+    # Aggregate
+    from_snapshot: 2,
+    to_snapshot: 1,
+    # GenServer
+    code_change: 3,
+    format_status: 2,
+    handle_call: 3,
+    handle_cast: 2,
+    handle_info: 2,
+    terminate: 2
+  ]
 
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts], location: :keep do
@@ -44,19 +137,6 @@ defmodule Helios.Aggregate do
       import Helios.Context
 
       use Helios.Pipeline, opts
-
-      @doc """
-      Creates new state. Called once during aggregate recovery or creation.
-
-      Override this function if your state struct
-      is not defined in module that implements `Helios.Aggregate` behaviour,
-      or you need to initialize some values before recovery starts.
-      """
-      def new() do
-        struct(__MODULE__, [])
-      end
-
-      defoverridable new: 0
     end
   end
 
