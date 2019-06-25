@@ -41,7 +41,8 @@ defmodule Helios.EventJournal do
   """
   alias Helios.EventJournal.Messages
 
-  def end_of_stream(), do: 9_223_372_036_854_775_807
+  def stream_end(), do: 9_223_372_036_854_775_807
+  def stream_start(), do: -1
 
   defmacro __using__(otp_app: otp_app) do
     quote do

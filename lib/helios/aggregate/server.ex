@@ -509,7 +509,7 @@ defmodule Helios.Aggregate.Server do
         id: id
       } = state
 
-      end_of_stream = Helios.EventJournal.end_of_stream()
+      end_of_stream = Helios.EventJournal.stream_start()
       stream = module.persistance_id(id)
 
       with {:ok, %{events: [event | _]}} <-
