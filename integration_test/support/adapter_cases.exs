@@ -7,7 +7,7 @@ defmodule Helios.Integration.AdapterCasesTest do
   @tag :event_journal
   @tag :event_journal_write
   test "should write to stream in journal and return correct event version" do
-    stream = "journal_test_write_stream"
+    stream = "journal_test_write_stream-#{UUID.uuid4()}"
 
     event =
       Messages.EventData.new(Extreme.Tools.gen_uuid(), UserCreated, %{
@@ -23,7 +23,7 @@ defmodule Helios.Integration.AdapterCasesTest do
   @tag :event_journal
   @tag :event_journal_read_single
   test "should read single event at given position" do
-    stream = "journal_test_read_single_event"
+    stream = "journal_test_read_single_event-#{UUID.uuid4()}"
 
     events =
       Enum.map(
@@ -53,7 +53,7 @@ defmodule Helios.Integration.AdapterCasesTest do
   @tag :event_journal
   @tag :event_journal_read
   test "should read events from given stream, from given position, forward" do
-    stream = "journal_test_read_forward_stream"
+    stream = "journal_test_read_forward_stream-#{UUID.uuid4()}"
     number_of_events = 20
 
     events =
@@ -83,7 +83,7 @@ defmodule Helios.Integration.AdapterCasesTest do
   @tag :event_journal
   @tag :event_journal_read
   test "should read events from given stream, from given position, backward" do
-    stream = "journal_test_read_stream_backward"
+    stream = "journal_test_read_stream_backward-#{UUID.uuid4()}"
     number_of_events = 20
 
     events =
@@ -218,7 +218,7 @@ defmodule Helios.Integration.AdapterCasesTest do
   @tag :event_journal
   @tag :event_journal_stream_metadata
   test "should write and read stream metadata to and from event journal" do
-    stream = "journal_test_write_metadata"
+    stream = "journal_test_write_metadata-#{UUID.uuid4()}"
     number_of_events = 20
 
     metadata = %{
