@@ -265,7 +265,8 @@ defmodule Helios.EventJournal do
 
     unless Helios.EventJournal.Adapter in behaviours do
       raise ArgumentError,
-            "expected :adapter option given to Ecto.Repo to list Ecto.Adapter as a behaviour"
+            "expected :adapter option given to Helios.EventJournal to list " <>
+              "Helios.EventJournal.Adapter as a behaviour"
     end
 
     {otp_app, adapter, behaviours, config}
