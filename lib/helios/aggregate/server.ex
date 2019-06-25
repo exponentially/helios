@@ -4,10 +4,13 @@ defmodule Helios.Aggregate.Server do
   require Logger
   alias Helios.Context
   alias Helios.Pipeline.MessageHandlerClauseError
+  alias Helios.Aggregate.SnapshotOffer
   import Helios.Registry, only: [whereis_or_register: 5]
   # alias Helios.Aggregate.WrapperError
 
   @idle_timeout 30_000
+  # events
+  @snapshot_every 1000
 
   @type key :: integer() | String.t()
   @type status :: :recovering | {:executing, Context.t()} | :ready
@@ -330,6 +333,7 @@ defmodule Helios.Aggregate.Server do
       |> Map.put(:status, {:executing, ctx})
       |> maybe_commit()
       |> maybe_reply()
+      |> take_snapshot()
       |> maybe_dequeue()
 
     {:noreply, %{new_state | last_activity_at: DateTime.utc_now()}}
@@ -435,6 +439,48 @@ defmodule Helios.Aggregate.Server do
 
   defp maybe_reply(s), do: s
 
+  defp take_snapshot(%{status: {:executing, %{status: :success}}} = s) do
+    %{
+      journal: journal,
+      last_sequence_no: event_number,
+      last_snapshot_version: snapshot_version,
+      id: id,
+      aggregate_module: module,
+      aggregate: aggregate
+    } = s
+
+    with true <- function_exported?(module, :to_snapshot, 1),
+         true <- event_number > 0,
+         0 <- rem(event_number, @snapshot_every) do
+      payload = module.to_snapshot(aggregate)
+      stream = module.persistance_id(id)
+
+      {:ok, version} =
+        journal.append_to_stream(
+          "snapshot::#{stream}",
+          [%{data: payload, metadata: %{from_event_number: event_number}}],
+          snapshot_version
+        )
+
+      %{s | last_snapshot_version: version}
+    else
+      _ -> s
+    end
+  rescue
+    e ->
+      Logger.warn(fn ->
+        "Snapshot is NOT taken! Check error below. While it is safe to ignore " <>
+          "this warning, keep in mind that aggregate recovery will take longer " <>
+          "than it is desired if this error happenes again for same aggregate.\n" <>
+          Exception.format(:error, e, __STACKTRACE__)
+      end)
+
+      # ignore take snapshot errors
+      s
+  end
+
+  defp take_snapshot(s), do: s
+
   defp maybe_dequeue(%{status: :ready, buffer: buffer} = s) do
     do_dequeue(:queue.out(buffer), s)
   end
@@ -452,9 +498,46 @@ defmodule Helios.Aggregate.Server do
     end
   end
 
-  defp load_snapshot(state) do
-    # TODO: snapshot store
-    state
+  defp load_snapshot(%{aggregate_module: module} = state) do
+    unless function_exported?(module, :from_snapshot, 2) do
+      state
+    else
+      %{
+        journal: journal,
+        aggregate: aggregate,
+        aggregate_module: module,
+        id: id
+      } = state
+
+      end_of_stream = Helios.EventJournal.end_of_stream()
+      stream = module.persistance_id(id)
+
+      with {:ok, %{events: [event | _]}} <-
+             journal.read_stream_events_backward("snapshot::#{stream}", end_of_stream, 1),
+           snapshot <- SnapshotOffer.from_journal(event),
+           {:ok, aggregate} <- module.from_snapshot(snapshot, aggregate) do
+        %{
+          state
+          | last_sequence_no: snapshot.event_number,
+            aggregate: aggregate,
+            last_snapshot_version: snapshot.snapshot_number
+        }
+      else
+        {:ok, %{events: []}} ->
+          %{state | aggregate: aggregate}
+
+        {:error, error} ->
+          Logger.debug(fn -> "SnapshotOffer skipped due: #{inspect(error)}" end)
+          %{state | aggregate: aggregate}
+
+        {:skip, aggregate} ->
+          Logger.debug(fn ->
+            "SnapshotOffer rejected by user code, recovering from all stream events."
+          end)
+
+          %{state | aggregate: aggregate}
+      end
+    end
   end
 
   defp load_events(

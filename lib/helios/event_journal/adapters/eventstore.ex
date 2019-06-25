@@ -484,18 +484,18 @@ if Code.ensure_compiled?(Extreme) do
               else: []
 
           # todo: EventAdapters
-          Poison.decode!(
-            event.data || "{}",
-            opts
-          )
+          case Poison.decode(event.data || "{}", opts) do
+            {:ok, data} -> data
+            _ -> event.data
+          end
         else
           _ ->
             event.data
         end
 
       metadata =
-        case {event.metadata_content_type, event.metadata} do
-          {1, "{" <> _} -> Poison.decode!(event.metadata)
+        case Poison.decode(event.metadata, keys: :atoms) do
+          {:ok, metadata} -> metadata
           _ -> event.metadata
         end
 
