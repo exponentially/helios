@@ -80,6 +80,11 @@ defmodule Helios.Aggregate do
       import Helios.Context
 
       use Helios.Pipeline, opts
+
+      @doc "create new aggregate struct with all defaults"
+      def new(_), do: struct!(__MODULE__, [])
+
+      defoverridable(new: 1)
     end
   end
 
