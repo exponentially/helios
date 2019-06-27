@@ -68,67 +68,10 @@ defmodule Helios.Aggregate do
   """
   @callback to_snapshot(aggregate) :: any
 
-  @doc """
-  `GenServer.handle_call/3`
-  """
-  @callback handle_call(request :: term(), from :: GenServer.from(), aggregate) ::
-              {:reply, reply, new_state}
-              | {:reply, reply, new_state, timeout() | :hibernate}
-              | {:noreply, new_state}
-              | {:noreply, new_state, timeout() | :hibernate}
-              | {:stop, reason, reply, new_state}
-              | {:stop, reason, new_state}
-            when reply: term(), new_state: aggregate, reason: term()
-
-  @doc """
-  `GenServer.handle_cast/2`
-  """
-  @callback handle_cast(request :: term(), aggregate) ::
-              {:noreply, new_state}
-              | {:noreply, new_state, timeout() | :hibernate}
-              | {:stop, reason :: term(), new_state}
-            when new_state: aggregate()
-
-  @doc """
-  `GenServer.handle_info/2`
-  """
-  @callback handle_info(msg :: :timeout | term(), aggregate) ::
-              {:noreply, new_state}
-              | {:noreply, new_state, timeout() | :hibernate}
-              | {:stop, reason :: term(), new_state}
-            when new_state: aggregate()
-
-  @doc """
-  The same as `c:GenServer.code_change/3`.
-  """
-  @callback code_change(old_vsn, state :: term, extra :: term) ::
-              {:ok, new_state :: term}
-              | {:error, reason :: term}
-            when old_vsn: term | {:down, term}
-
-  @doc """
-  The same as `c:GenServer.format_status/2`.
-  """
-  @callback format_status(:normal | :terminate, [pdict :: {term, term} | (state :: term), ...]) ::
-              status :: term
-
-  @doc """
-  The same as `c:GenServer.terminate/2`.
-  """
-  @callback terminate(reason, state :: term) :: term
-            when reason: :normal | :shutdown | {:shutdown, term} | term
-
   @optional_callbacks [
     # Aggregate
     from_snapshot: 2,
-    to_snapshot: 1,
-    # GenServer
-    code_change: 3,
-    format_status: 2,
-    handle_call: 3,
-    handle_cast: 2,
-    handle_info: 2,
-    terminate: 2
+    to_snapshot: 1
   ]
 
   defmacro __using__(opts) do

@@ -1,6 +1,6 @@
 Logger.configure(level: :info)
 ExUnit.start()
-IO.inspect("JOURNAL ADAPTER STARTED TEST")
+
 alias Helios.EventJournal.Adapter.Eventstore
 alias Helios.Integration.TestJournal
 
@@ -14,6 +14,7 @@ eventstore_conn = [
   connection_name: "helios_test",
   max_attempts: 10
 ]
+
 Application.put_env(:extreme, :protocol_version, 4)
 Application.put_env(:helios, TestJournal, adapter: Eventstore, adapter_config: eventstore_conn)
 

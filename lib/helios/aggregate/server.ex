@@ -130,25 +130,6 @@ defmodule Helios.Aggregate.Server do
     {:stop, :shutdown, {:resume, s}, s}
   end
 
-  def handle_call(msg, from, %{mod: mod, state: state} = s) do
-    case mod.handle_call(msg, from, state) do
-      {:reply, reply, state} ->
-        {:reply, reply, %{s | state: state}}
-
-      {:reply, reply, state, t} when is_integer(t) or t == :hibernate ->
-        {:reply, reply, %{s | state: state}, t}
-
-      {:reply, reply, state, {:continue, t}} ->
-        {:reply, reply, %{s | state: state}, {:continue, t}}
-
-      {:stop, reason, reply, state} ->
-        {:stop, reason, reply, %{s | state: state}}
-
-      return ->
-        handle_noreply_callback(return, s)
-    end
-  end
-
   @doc false
   @impl true
   def handle_cast({:execute, ctx}, %{status: :ready} = state) do
@@ -218,10 +199,6 @@ defmodule Helios.Aggregate.Server do
     {:noreply, state}
   end
 
-  def handle_cast(msg, %{state: state} = s) do
-    noreply_callback(:handle_cast, [msg, state], s)
-  end
-
   @doc false
   @impl GenServer
   def handle_info(:idlechk, %{buffer: buffer, last_activity_at: inactive_since} = state) do
@@ -251,10 +228,6 @@ defmodule Helios.Aggregate.Server do
   # to clean up
   def handle_info({:helios, :die}, state) do
     {:stop, :shutdown, state}
-  end
-
-  def handle_info(msg, %{aggregate: aggregate} = state) do
-    noreply_callback(:handle_info, [msg, aggregate], state)
   end
 
   ## Catch-all messages
@@ -335,6 +308,7 @@ defmodule Helios.Aggregate.Server do
       |> maybe_reply()
       |> take_snapshot()
       |> maybe_dequeue()
+
 
     {:noreply, %{new_state | last_activity_at: DateTime.utc_now()}}
   end
@@ -593,38 +567,5 @@ defmodule Helios.Aggregate.Server do
 
   defp ready(state) do
     %{state | status: :ready}
-  end
-
-  defp noreply_callback(:handle_info, [msg, aggregate], %{aggregate_module: mod} = s) do
-    if function_exported?(mod, :handle_info, 2) do
-      handle_noreply_callback(mod.handle_info(msg, aggregate), s)
-    else
-      log = '** Undefined handle_info in ~tp~n** Unhandled message: ~tp~n'
-      :error_logger.warning_msg(log, [mod, msg])
-      {:noreply, %{s | aggregate: aggregate}}
-    end
-  end
-
-  defp noreply_callback(callback, args, %{aggregate_module: mod} = s) do
-    handle_noreply_callback(apply(mod, callback, args), s)
-  end
-
-  defp handle_noreply_callback(return, s) do
-    case return do
-      {:noreply, aggregate} ->
-        {:noreply, %{s | aggregate: aggregate}}
-
-      {:noreply, aggregate, term} when is_integer(term) or term == :hibernate ->
-        {:noreply, %{s | aggregate: aggregate}, term}
-
-      {:noreply, aggregate, {:continue, term}} ->
-        {:noreply, %{s | aggregate: aggregate}, {:continue, term}}
-
-      {:stop, reason, aggregate} ->
-        {:stop, reason, %{s | aggregate: aggregate}}
-
-      other ->
-        {:stop, {:bad_return_value, other}, s}
-    end
   end
 end
