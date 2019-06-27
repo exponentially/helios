@@ -36,7 +36,10 @@ defmodule Helios.Aggregate do
   Constructs new instance of aggregate struct. Override to set defaults or if your
   struct is defined in different module.
   """
-  @callback new(args :: init_args) :: {:ok, aggregate}
+  @callback new(args :: init_args) ::
+        {:ok, aggregate}
+        | {:stop, term}
+        | :ignore
 
   @doc """
   Applies single event to aggregate when replied or after `handle_exec/3` is executed.
@@ -82,7 +85,8 @@ defmodule Helios.Aggregate do
       use Helios.Pipeline, opts
 
       @doc "create new aggregate struct with all defaults"
-      def new(_), do: struct!(__MODULE__, [])
+      @impl true
+      def new(_), do: {:ok, struct!(__MODULE__, [])}
 
       defoverridable(new: 1)
     end

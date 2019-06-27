@@ -90,10 +90,6 @@ defmodule Helios.Aggregate.Server do
         :ok = GenServer.cast(self(), :recover)
         {:ok, %{state | aggregate: aggregate}}
 
-      {:ok, aggregate, and_then} ->
-        :ok = GenServer.cast(self(), :recover)
-        {:ok, %{state | aggregate: aggregate}, and_then}
-
       {:stop, _} = stop ->
         stop
 
