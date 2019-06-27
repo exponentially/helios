@@ -23,10 +23,10 @@ end
 
 defmodule Helios.RoutingTest do
   use ExUnit.Case, async: true
-  alias Helios.RoutingTest.MyRouter
+  # alias Helios.RoutingTest.MyRouter
 
   test "should" do
-    params = %{
+    %{
       "id" => 1,
       "first_name" => "Jhon",
       "last_name" => "Doe",

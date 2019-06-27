@@ -25,7 +25,7 @@ defmodule Helios.AggregateTest do
       "email" => "jhon.doe@gmail.com"
     }
 
-    {:ok, aggregate} = UserAggregate.init([id: 1234, otp_app: :dummy_app])
+    {:ok, aggregate} = UserAggregate.new([id: 1234, otp_app: :dummy_app])
 
     ctx_before =
       args.ctx

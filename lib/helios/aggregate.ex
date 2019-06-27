@@ -36,7 +36,7 @@ defmodule Helios.Aggregate do
   Constructs new instance of aggregate struct. Override to set defaults or if your
   struct is defined in different module.
   """
-  @callback init(args :: init_args) :: aggregate
+  @callback new(args :: init_args) :: {:ok, aggregate}
 
   @doc """
   Applies single event to aggregate when replied or after `handle_exec/3` is executed.
@@ -83,7 +83,7 @@ defmodule Helios.Aggregate do
     end
   end
 
-  def state(%Context{assigns: %{aggregate: aggregate}} = _), do: aggregate
+  def state(%Context{assigns: %{aggregate: aggregate}}), do: aggregate
 
   def state(_ctx), do: nil
 end

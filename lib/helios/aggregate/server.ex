@@ -85,7 +85,7 @@ defmodule Helios.Aggregate.Server do
         last_activity_at: DateTime.utc_now()
       )
 
-    case module.init(id: id, otp_app: otp_app) do
+    case module.new(id: id, otp_app: otp_app) do
       {:ok, aggregate} ->
         :ok = GenServer.cast(self(), :recover)
         {:ok, %{state | aggregate: aggregate}}
@@ -483,7 +483,7 @@ defmodule Helios.Aggregate.Server do
         id: id
       } = state
 
-      end_of_stream = Helios.EventJournal.stream_start()
+      end_of_stream = Helios.EventJournal.stream_end()
       stream = module.persistance_id(id)
 
       with {:ok, %{events: [event | _]}} <-

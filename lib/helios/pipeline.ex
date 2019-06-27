@@ -54,7 +54,7 @@ defmodule Helios.Pipeline do
         init_mode: Helios.plug_init_mode()
       )
 
-    quote do
+    quote location: :keep do
       defoverridable handle: 2
 
       def handle(var!(ctx_before), opts) do

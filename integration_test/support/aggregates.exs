@@ -10,7 +10,7 @@ defmodule Helios.Integration.UserAggregate do
   # Plugs for command context pipeline
   plug(Helios.Plugs.Logger, log_level: :debug)
 
-  def init(args) do
+  def new(_args) do
     {:ok, struct!(__MODULE__, [])}
   end
 
