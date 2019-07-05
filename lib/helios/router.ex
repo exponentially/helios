@@ -106,19 +106,15 @@ defmodule Helios.Router do
         aggr = spec.aggregate
         opts = spec.route
 
-        Enum.each(spec.commands, fn
-          command ->
-            p =
-              if spec.singleton do
-                Path.join([spec.path, Atom.to_string(command)])
-              else
-                Path.join([spec.path, ":#{spec.param}", Atom.to_string(command)])
-              end
+        Enum.each(spec.commands, fn command ->
+          p =
+            if spec.singleton do
+              Path.join([spec.path, Atom.to_string(command)])
+            else
+              Path.join([spec.path, ":#{spec.param}", Atom.to_string(command)])
+            end
 
-            execute(p, aggr, command, opts)
-
-          command ->
-            nil
+          execute(p, aggr, command, opts)
         end)
       end
     end
@@ -137,6 +133,11 @@ defmodule Helios.Router do
   end
 
   def __call__({ctx, pipeline, {plug, opts}}) do
+    ctx =
+      ctx
+      |> Context.put_private(:helios_plug, plug)
+      |> Context.put_private(:helios_plug_handler, plug.init(opts))
+
     case pipeline.(ctx) do
       %Context{halted: true} = halted_ctx ->
         halted_ctx
@@ -145,10 +146,7 @@ defmodule Helios.Router do
         try do
           case piped_ctx.method do
             :execute ->
-              piped_ctx
-              |> Context.put_private(:helios_plug, plug)
-              |> Context.put_private(:helios_plug_handler, plug.init(opts))
-              |> Helios.Aggregate.Server.call(plug.init(opts))
+              Helios.Aggregate.Server.call(piped_ctx, plug.init(opts))
 
             :process ->
               plug.call(piped_ctx, plug.init(opts))
