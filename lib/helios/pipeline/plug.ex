@@ -9,7 +9,7 @@ defmodule Helios.Pipeline.Plug do
   """
   @type t :: module() | atom()
 
-  @type opts :: Keyword.t()
+  @type opts :: Keyword.t() | atom()
 
   @callback init(opts) :: opts
 
