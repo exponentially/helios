@@ -21,7 +21,7 @@ defmodule Helios.Endpoint.Handler do
   end
 
   def init([otp_app, endpoint]) do
-    Logger.info("Starting handler")
+    Logger.info("[endpoint: #{inspect(endpoint)}] Starting message handler")
     {:ok, %{endpoint: endpoint, otp_app: otp_app}}
   end
 end
