@@ -79,13 +79,13 @@ defmodule Helios.Aggregate do
 
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts], location: :keep do
+      @behaviour Helios.Aggregate
       import Helios.Aggregate
       import Helios.Context
 
       use Helios.Pipeline, opts
 
       @doc "create new aggregate struct with all defaults"
-      @impl true
       def new(_), do: {:ok, struct!(__MODULE__, [])}
 
       defoverridable(new: 1)
