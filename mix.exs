@@ -25,7 +25,13 @@ defmodule Helios.MixProject do
       dialyzer: [ plt_add_apps: [:mix] ,
                   ignore_warnings: ".dialyzer_ignore.exs",
                   list_unused_filters: true
-                ]
+                ],
+
+      test_coverage: [tool: ExCoveralls],
+      referred_cli_env: [coveralls: :test,
+                         "coveralls.detail": :test,
+                         "coveralls.post": :test,
+                         "coveralls.html": :test]
     ]
   end
 
@@ -47,7 +53,8 @@ defmodule Helios.MixProject do
       {:extreme, "~> 0.13", optinal: true},
       {:dialyxir, "~> 1.0.0-rc.4", only: [:dev, :test], runtime: false, optinal: true},
       {:credo, "~> 0.10.0", only: [:dev, :test], runtime: false},
-      {:poolboy, "~> 1.5"}
+      {:poolboy, "~> 1.5"},
+      {:excoveralls, "~> 0.10", only: :test}
     ]
   end
 

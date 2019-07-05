@@ -33,7 +33,7 @@ defmodule Helios.Router.RouteTest do
   end
 
   @tag :router_route
-  test "builds expressions based on the route" do
+  test "builds expressions based on the route with :id param" do
 
     route = Route.build(
       1,
@@ -52,6 +52,29 @@ defmodule Helios.Router.RouteTest do
     assert exprs.verb_match == :execute
     assert exprs.path == ["users", {:id, [], nil}, "create_user"]
     assert exprs.binding == [{"id", {:id, [], nil}}]
+    assert exprs.dispatch == {UserAggregate, :create_user}
+  end
+
+  @tag :router_route
+  test "builds expressions based on the route without :id param" do
+
+    route = Route.build(
+      1,
+      :match,
+      :execute,
+      "/users/create_user",
+      UserAggregate,
+      :create_user,
+      "users_create_user",
+      [:pipeline1, :pipeline2],
+      %{foo: "bar"},
+      %{bar: "baz"}
+    )
+    exprs = Route.exprs(route)
+
+    assert exprs.verb_match == :execute
+    assert exprs.path == ["users", "create_user"]
+    assert exprs.binding == []
     assert exprs.dispatch == {UserAggregate, :create_user}
   end
 end
