@@ -1,10 +1,23 @@
 defmodule Helios.Endpoint.Facade do
-  @moduledoc false
+  @moduledoc """
+  Implements `Helios.Pipeline.Adapter` so it can dispatch message to endpoint and
+  receive response from it.
+
+  Note that owner process pid is used to receive response, meaning that it will
+  await response or {:error, :timout}
+  """
   alias Helios.Context
   require Logger
   @behaviour Helios.Pipeline.Adapter
 
-  def ctx(%{path: path, params: params}) do
+  @impl Helios.Pipeline.Adapter
+  @spec send_resp(%{owner: any, ref: any}, any, any) :: {:ok, any, %{owner: any, ref: any}}
+  def send_resp(%{owner: _owner, ref: _ref} = state, _status, response) do
+    {:ok, response, state}
+  end
+
+  @doc false
+  def ctx(%{path: path, params: params} = args) do
     ref = make_ref()
 
     req = %{
@@ -19,12 +32,21 @@ defmodule Helios.Endpoint.Facade do
       method: :execute,
       owner: self(),
       path_info: split_path(path),
-      params: params
+      params: params,
+      assigns: Map.get(args, :assigns, %{}),
+      private: Map.get(args, :private, %{}),
+      request_id: Map.get(args, :request_id),
+      correlation_id: Map.get(args, :correlation_id)
     }
   end
 
   @doc "Executes command at given proxy and endpoint"
-  @spec execute(module, String.t(), term, atom | String.t(), map(), Keyword.t()) :: term
+  @spec execute(module, String.t(), term, atom | String.t(), map(), Keyword.t()) ::
+          {:ok, any}
+          | {:error, :not_found}
+          | {:error, :timeout}
+          | {:error, :server_error}
+          | {:error, any}
   def execute(endpoint, proxy, id, command, params \\ %{}, opts \\ [])
 
   def execute(endpoint, proxy, id, command, params, opts) when is_atom(command) do
@@ -34,9 +56,20 @@ defmodule Helios.Endpoint.Facade do
   def execute(endpoint, proxy, id, command, params, opts) do
     proxy_id = to_param(id)
     opts = Keyword.put_new(opts, :timeout, 5_000)
-    path = Path.join([proxy, proxy_id, command])
+    path =
+      [proxy, proxy_id, command]
+      |> Path.join()
 
-    %{path_info: path_info} = ctx = ctx(%{path: path, params: params})
+    %{path_info: path_info} =
+      ctx =
+      ctx(%{
+        path: path,
+        params: params,
+        assigns: Keyword.get(opts, :assigns, %{}),
+        private: Keyword.get(opts, :private, %{}),
+        requiest_id: Keyword.get(opts, :request_id),
+        correlation_id: Keyword.get(opts, :correlation_id)
+      })
 
     try do
       case endpoint.__dispatch__(path_info, opts) do
@@ -58,11 +91,6 @@ defmodule Helios.Endpoint.Facade do
       :exit, value ->
         exit({value, {endpoint, :call, [ctx, opts]}})
     end
-  end
-
-  @impl Helios.Pipeline.Adapter
-  def send_resp(%{owner: _owner, ref: _ref} = state, _status, response) do
-    {:ok, response, state}
   end
 
   def define(env, routes) do
@@ -132,19 +160,27 @@ defmodule Helios.Endpoint.Facade do
     for segment <- segments, segment != "", do: segment
   end
 
-  defp to_param(int) when is_integer(int), do: Integer.to_string(int)
-  defp to_param(bin) when is_binary(bin), do: bin
-  defp to_param(false), do: "false"
-  defp to_param(true), do: "true"
-  defp to_param(data), do: Helios.Param.to_param(data)
+  def to_param(int) when is_integer(int), do: Integer.to_string(int)
+  def to_param(bin) when is_binary(bin), do: bin
+  def to_param(false), do: "false"
+  def to_param(true), do: "true"
+  def to_param(data), do: Helios.Param.to_param(data)
 
+  defp maybe_respond({:error, %Helios.Router.NoRouteError{} = payload}) do
+    Logger.error(Exception.format(:error, payload, :erlang.get_stacktrace()))
+    {:error, :not_found}
+  end
+
+  defp maybe_respond({:error, :undef}) do
+    {:error, :not_found}
+  end
 
   defp maybe_respond({:exit, {:timeout, _}}) do
     {:error, :timeout}
   end
 
   defp maybe_respond({:exit, reason}) do
-    Logger.error(fn -> "Received :exit signal with reson \n#{inspect reason}" end)
+    Logger.error(fn -> "Received :exit signal with reson \n#{inspect(reason)}" end)
     {:error, :server_error}
   end
 

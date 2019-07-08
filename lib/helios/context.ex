@@ -93,7 +93,7 @@ defmodule Helios.Context do
             response: nil
 
   @already_sent {:plug_ctx, :sent}
-  # @unsent [:unset, :set, :set_chunked, :set_file]
+  @unsent [:unset, :set]
   @doc """
   Assigns a value to a key in the context.
 
@@ -211,12 +211,17 @@ defmodule Helios.Context do
     %{ctx | events: events ++ to_emit}
   end
 
+  @doc """
+  Set response to context. Response is success
+  """
   @spec ok(Context.t(), any()) :: Context.t()
-  def ok(%Context{} = ctx, message \\ :ok) do
-    unless is_nil(ctx.response) do
-      raise RuntimeError, "Response already set!"
-    end
+  def ok(ctx, message \\ :ok)
 
+  def ok(%Context{state: :set}, _message) do
+    raise RuntimeError, "Response already set!"
+  end
+
+  def ok(%Context{} = ctx, message) do
     %{ctx | response: message, state: :set}
   end
 
@@ -243,6 +248,23 @@ defmodule Helios.Context do
 
   def send_resp(%Context{}) do
     raise AlreadySentError
+  end
+
+  @doc """
+  Registers a callback to be invoked before the response is sent.
+
+  Callbacks are invoked in the reverse order they are defined (callbacks
+  defined first are invoked last).
+  """
+  @spec register_before_send(t, (t -> t)) :: t
+  def register_before_send(%Context{state: state}, _callback)
+      when not (state in @unsent) do
+    raise AlreadySentError
+  end
+
+  def register_before_send(%Context{before_send: before_send} = ctx, callback)
+      when is_function(callback, 1) do
+    %{ctx | before_send: [callback | before_send]}
   end
 
   defp run_before_send(%Context{before_send: before_send} = ctx, new) do

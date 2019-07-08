@@ -1,16 +1,19 @@
+[![Hex version badge](https://img.shields.io/hexpm/v/helios.svg)](https://hex.pm/packages/helios)
+[![Build Status](https://travis-ci.org/exponentially/helios.svg?branch=master)](https://travis-ci.org/exponentially/helios)
+[![Coverage Status](https://coveralls.io/repos/github/exponentially/helios/badge.svg?branch=master)](https://coveralls.io/github/exponentially/helios?branch=master)
+
 # Helios
 
 A building blocks for elixir CQRS segregated applications.
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `helios` to your list of dependencies in `mix.exs`:
+The package can be installed by adding `helios` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:helios, "~> 0.1"}
+    {:helios, "~> 0.2"}
   ]
 end
 ```

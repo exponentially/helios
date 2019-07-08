@@ -5,7 +5,7 @@ defmodule Helios.Aggregate.Server do
   alias Helios.Context
   alias Helios.Pipeline.MessageHandlerClauseError
   alias Helios.Aggregate.SnapshotOffer
-  import Helios.Registry, only: [whereis_or_register: 5]
+  alias Helios.Registry
   # alias Helios.Aggregate.WrapperError
 
   @idle_timeout 30_000
@@ -37,7 +37,8 @@ defmodule Helios.Aggregate.Server do
 
   # CLIENT
 
-  def call(%{private: private} = ctx, _) do
+  @spec call(ctx :: Context.t(), any) :: Context.t()
+  def call(%{private: private} = ctx, _opts) do
     %{
       helios_plug_key: key,
       helios_plug: plug,
@@ -47,7 +48,7 @@ defmodule Helios.Aggregate.Server do
     id = Map.get(ctx.params, key)
 
     {:ok, pid} =
-      whereis_or_register(
+      Registry.whereis_or_register(
         endpoint,
         plug.persistance_id(id),
         Helios.Aggregate.Supervisor,
@@ -55,7 +56,8 @@ defmodule Helios.Aggregate.Server do
         [endpoint, plug, id]
       )
 
-    GenServer.call(pid, {:execute, ctx}, Map.get(private, :helios_timeout, 5_000))
+    timeout = Map.get(private, :helios_timeout, 5_000)
+    GenServer.call(pid, {:execute, ctx}, timeout)
   end
 
   @spec start_link(atom, {module(), key()}, GenServer.options()) :: GenServer.on_start()
@@ -105,6 +107,7 @@ defmodule Helios.Aggregate.Server do
   @impl true
   def handle_call({:execute, ctx}, from, %{status: :ready} = state) do
     new_ctx = %{ctx | owner: from}
+    Logger.metadata(request_id: ctx.request_id)
     handle_execute(new_ctx, state)
   end
 
@@ -129,6 +132,7 @@ defmodule Helios.Aggregate.Server do
   @doc false
   @impl true
   def handle_cast({:execute, ctx}, %{status: :ready} = state) do
+    Logger.metadata(request_id: ctx.request_id)
     handle_execute(ctx, state)
   end
 
@@ -304,7 +308,6 @@ defmodule Helios.Aggregate.Server do
       |> maybe_reply()
       |> take_snapshot()
       |> maybe_dequeue()
-
 
     {:noreply, %{new_state | last_activity_at: DateTime.utc_now()}}
   end

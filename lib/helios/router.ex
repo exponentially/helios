@@ -108,10 +108,10 @@ defmodule Helios.Router do
 
         Enum.each(spec.commands, fn command ->
           p =
-            if spec.singleton do
-              Path.join([spec.path, Atom.to_string(command)])
-            else
+            unless spec.singleton do
               Path.join([spec.path, ":#{spec.param}", Atom.to_string(command)])
+            else
+              Path.join([spec.path, Atom.to_string(command)])
             end
 
           execute(p, aggr, command, opts)
