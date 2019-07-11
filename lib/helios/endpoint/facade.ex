@@ -184,11 +184,15 @@ defmodule Helios.Endpoint.Facade do
     {:error, :server_error}
   end
 
-  defp maybe_respond(%Context{status: :success, response: resp}) do
-    {:ok, resp}
+  defp maybe_respond(%Context{status: :failed, response: resp}) do
+    if is_tuple(resp) do
+      resp
+    else
+      {:error, resp}
+    end
   end
 
-  defp maybe_respond(%Context{status: :failed, response: resp}) do
-    {:error, resp}
+  defp maybe_respond(%Context{status: :success, response: resp}) do
+    {:ok, resp}
   end
 end

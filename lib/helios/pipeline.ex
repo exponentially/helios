@@ -23,9 +23,9 @@ defmodule Helios.Pipeline do
         ctx =
           ctx.private
           |> update_in(fn private ->
-              private
-              |> Map.put(:helios_plug, __MODULE__)
-              |> Map.put(:helios_plug_handler, handler)
+            private
+            |> Map.put(:helios_plug, __MODULE__)
+            |> Map.put(:helios_plug_handler, handler)
           end)
           |> Map.put(:status, :executing)
 
@@ -34,7 +34,14 @@ defmodule Helios.Pipeline do
 
       @doc false
       def handle(%Context{private: %{helios_plug_handler: handler}} = ctx, _ops) do
-        apply(__MODULE__, handler, [ctx, ctx.params])
+        if function_exported?(__MODULE__, handler, 2) do
+          apply(__MODULE__, handler, [ctx, ctx.params])
+        else
+          raise Helios.Pipeline.MessageHandlerClauseError,
+            plug: __MODULE__,
+            handler: handler,
+            params: ctx.params
+        end
       end
 
       defoverridable init: 1, call: 2, handle: 2
@@ -68,7 +75,7 @@ defmodule Helios.Pipeline do
               reason,
               __MODULE__,
               var!(ctx_before).private.helios_plug_handler,
-              System.stacktrace()
+              __STACKTRACE__
             )
         end
       end

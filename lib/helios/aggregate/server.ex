@@ -1,7 +1,7 @@
 defmodule Helios.Aggregate.Server do
   @moduledoc false
   use GenServer
-  require Logger
+  use Helios.Logger
   alias Helios.Context
   alias Helios.Pipeline.MessageHandlerClauseError
   alias Helios.Aggregate.SnapshotOffer
@@ -125,7 +125,7 @@ defmodule Helios.Aggregate.Server do
   #   - `:ignore`, to leave the process running on its current node
   #
   def handle_call({:helios, :begin_handoff}, _from, s) do
-    Logger.debug("Handing off state")
+    debug(fn -> "Handing off state" end)
     {:stop, :shutdown, {:resume, s}, s}
   end
 
@@ -149,7 +149,7 @@ defmodule Helios.Aggregate.Server do
       |> ready()
       |> schedule_shutdown()
 
-    Logger.debug(fn ->
+    debug(fn ->
       case state.last_sequence_no do
         -1 ->
           "Spawned new aggregate `{#{module}, #{id}}`"
@@ -184,9 +184,9 @@ defmodule Helios.Aggregate.Server do
   # to ignore the handoff state, or apply your own conflict resolution
   # strategy
   def handle_cast({:helios, :resolve_conflict, remote}, local) do
-    Logger.debug(fn -> "Resolving conflict with remote #{inspect(remote.peer)}." end)
+    debug(fn -> "Resolving conflict with remote #{inspect(remote.peer)}." end)
 
-    Logger.debug(fn ->
+    debug(fn ->
       "Remote buffer of #{:queue.len(remote.buffer)} pending commands is merget into local process buffer."
     end)
 
@@ -322,7 +322,6 @@ defmodule Helios.Aggregate.Server do
 
     ctx
     |> plug.call(ctx.private.helios_plug_handler)
-    |> Map.put(:status, :executed)
   rescue
     error in MessageHandlerClauseError ->
       %{ctx | status: :failed, halted: true, response: error}
@@ -377,10 +376,10 @@ defmodule Helios.Aggregate.Server do
   defp maybe_reply(%{status: {:executing, %{status: :failed} = ctx}} = s) do
     case ctx.owner do
       nil ->
-        Logger.warn(
+        warn(fn ->
           "Failed to execute command #{ctx.private.helios_plug_handler} with " <>
             "reson #{ctx.response} but no owner found in context to report to!!!"
-        )
+        end)
 
       pid when is_pid(pid) ->
         send(pid, ctx)
@@ -395,16 +394,16 @@ defmodule Helios.Aggregate.Server do
   defp maybe_reply(%{status: {:executing, %{status: :success} = ctx}} = s) do
     case ctx.owner do
       nil ->
-        Logger.warn(
+        warn(fn ->
           "Failed to execute command #{ctx.private.helios_plug_handler} with " <>
             " reson #{ctx.response} but no owner found in context to report to!!!"
-        )
+        end)
 
       pid when is_pid(pid) ->
         send(pid, ctx)
 
       {pid, _tag} = dest when is_pid(pid) ->
-        :ok = GenServer.reply(dest, ctx)
+        GenServer.reply(dest, ctx)
     end
 
     %{s | status: :ready}
@@ -441,7 +440,7 @@ defmodule Helios.Aggregate.Server do
     end
   rescue
     e ->
-      Logger.warn(fn ->
+      warn(fn ->
         "Snapshot is NOT taken! Check error below. While it is safe to ignore " <>
           "this warning, keep in mind that aggregate recovery will take longer " <>
           "than it is desired if this error happenes again for same aggregate.\n" <>
@@ -500,11 +499,11 @@ defmodule Helios.Aggregate.Server do
           %{state | aggregate: aggregate}
 
         {:error, error} ->
-          Logger.debug(fn -> "SnapshotOffer skipped due: #{inspect(error)}" end)
+          debug(fn -> "SnapshotOffer skipped due: #{inspect(error)}" end)
           %{state | aggregate: aggregate}
 
         {:skip, aggregate} ->
-          Logger.debug(fn ->
+          debug(fn ->
             "SnapshotOffer rejected by user code, recovering from all stream events."
           end)
 

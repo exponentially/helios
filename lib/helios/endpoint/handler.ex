@@ -1,7 +1,7 @@
 defmodule Helios.Endpoint.Handler do
   @moduledoc false
   use GenServer
-  require Logger
+  use Helios.Logger
 
   def child_spec(otp_app, endpoint) do
     %{
@@ -21,7 +21,7 @@ defmodule Helios.Endpoint.Handler do
   end
 
   def init([otp_app, endpoint]) do
-    Logger.info("[endpoint: #{inspect(endpoint)}] Starting message handler")
+    info(fn -> "[endpoint: #{inspect(endpoint)}] Starting message handler" end)
     {:ok, %{endpoint: endpoint, otp_app: otp_app}}
   end
 end

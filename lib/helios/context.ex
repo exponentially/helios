@@ -222,7 +222,7 @@ defmodule Helios.Context do
   end
 
   def ok(%Context{} = ctx, message) do
-    %{ctx | response: message, state: :set}
+    %{ctx | response: message, state: :set, status: :executed}
   end
 
   @spec error(Context.t(), any()) :: Context.t()
