@@ -19,7 +19,9 @@ defmodule Helios.Registry.Distribution.Strategy do
 
       config :my_app, MyApp.Endpoint,
         registry:[
-          distribution_strategy: {Helios.Registry.Distribution.RingStrategy, :init, []}
+          distribution_strategy: {Helios.Registry.Distribution.Ring, :init, [
+            nodes: [~r/my_node@/]
+          ]}
         ]
 
   where `distibution_strategy` is requres {m, f, a} triplet that will be called using `Kernel.apply/3`

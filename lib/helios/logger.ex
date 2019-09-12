@@ -16,7 +16,11 @@ defmodule Helios.Logger do
 
     quote do
       if Application.get_env(:helios, :log_level, :warn) in [:debug] do
-        Logger.debug(fn -> "[#{inspect unquote(mod)}:#{unquote(fun)}/#{unquote(arity)}] #{unquote(msg)}" end)
+        Logger.debug(fn ->
+          msg = unquote(msg)
+          msg = if is_function(msg), do: msg.(), else: msg
+          "[#{inspect unquote(mod)}:#{unquote(fun)}/#{unquote(arity)}] #{msg}"
+        end)
       end
     end
   end
@@ -24,7 +28,7 @@ defmodule Helios.Logger do
   defmacro info(msg) do
     quote do
       if Application.get_env(:helios, :log_level, :warn) in [:debug, :info] do
-        Logger.info("#{unquote(msg)}")
+        Logger.info(unquote(msg))
       end
     end
   end
