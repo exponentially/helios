@@ -44,12 +44,12 @@ defmodule Helios.EventJournal do
   def stream_end(), do: 9_223_372_036_854_775_807
   def stream_start(), do: -1
 
-  defmacro __using__(otp_app: otp_app) do
+  defmacro __using__(opts) do
     quote do
       @behaviour Helios.EventJournal
 
       {otp_app, adapter, behaviours, config} =
-        Helios.EventJournal.compile_config(__MODULE__, unquote(otp_app))
+        Helios.EventJournal.compile_config(__MODULE__, unquote(opts[:otp_app]), unquote(opts[:adapter]))
 
       @otp_app otp_app
       @adapter adapter
@@ -243,9 +243,9 @@ defmodule Helios.EventJournal do
               | {:error, :access_denied}
               | {:ettot, any}
 
-  def compile_config(repo, otp_app) do
+  def compile_config(repo, otp_app, adapter) do
     opts = Application.get_env(otp_app, repo, [])
-    adapter = opts[:adapter]
+    adapter = opts[:adapter] || adapter
     config = opts[:adapter_config]
 
     unless adapter do
